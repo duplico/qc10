@@ -57,8 +57,8 @@ static void loadConfig() {
     for (byte i = 0; i < sizeof config; ++i)
         p[i] = eeprom_read_byte((byte*) i);
     // if loaded config is not valid, replace it with defaults
-    if (config.check != 147) {
-        config.check = 147;
+    if (config.check != 148) {
+        config.check = 148;
         config.freq = 9;
         config.rcv_group = 0;
         config.rcv_id = 1;
@@ -67,7 +67,7 @@ static void loadConfig() {
         saveConfig();
     }
     showConfig();
-    rf12_initialize(config.rcv_group, code2type(config.freq), config.rcv_id);
+    rf12_initialize(config.rcv_id, code2type(config.freq), config.rcv_group);
 }
 
 static void saveConfig() {
@@ -86,37 +86,20 @@ void setup () {
 
 void loop () {
     if (rf12_recvDone() && rf12_crc == 0) {
-        // We've received something.
-        // Its ID is GGGII where GGG=group, II=id:
-        // GGG=formatted rf12_grp, II=formatted rf12_hdr.
         Serial.print("OK ");
-        Serial.print(rf12_grp);
-        Serial.print("g ");
-        Serial.print(rf12_hdr);
-        Serial.print("hdr; data: ");
         for (byte i = 0; i < rf12_len; ++i)
             Serial.print(rf12_data[i]);
         Serial.println();
-        // Let's update our nearby-badges count.
-        return; // Let's re-try the above until we're done. This may have no effect.
+        delay(100); // otherwise led blinking isn't visible
     }
     
     if (sendTimer.poll(3000))
         needToSend = 1;
 
     if (needToSend && rf12_canSend()) {
-        Serial.println("Preparing to send.");
-        // We'll send our own beacon now.
-        // Switch to beacon mode:
-        rf12_initialize(config.bcn_group, code2type(config.freq), config.bcn_id);
-        while (!rf12_canSend())
-          rf12_recvDone();
         needToSend = 0;
+        
         rf12_sendStart(0, payload, sizeof payload);
-        Serial.println("Sent.");
-        // Back to receive:
-        rf12_initialize(config.rcv_group, code2type(config.freq), config.rcv_id);
-        // Now fuzz the timer from which we decide when we're going to send.
-        // POLL_TIMER = 3000 + random_adjustment_that_may_be_negative
+        delay(100); // otherwise led blinking isn't visible
     }
 }
