@@ -1,4 +1,13 @@
 // Queercon 10 Badge Prototype
+/*****************************
+ * This code is intended to be run on a JeeNode-compatible platform.
+ * 
+ *
+ *
+ *
+ *
+ * <http://www.queercon.org>
+ */
 // MIT License. http://opensource.org/licenses/mit-license.php
 //
 // Based in part on example code provided by:
@@ -7,8 +16,6 @@
 //
 // Otherwise:
 // (c) 13-Dec-2012 George Louthan <georgerlouth@nthefourth.com>
-//
-// http://www.queercon.org
 
 #include <JeeLib.h>
 #include <avr/eeprom.h>
@@ -152,6 +159,7 @@ void loop () {
     if (sendTimer.poll(beacon_timer)) {
         // Set the flag to cause us to send at the next opportunity.
         needToSend = 1;
+        Serial.println("--|BCN required.");
         // Now fuzz the timer from which we decide when we're going to send.
         beacon_timer = beacon_timer_base + random(beacon_timer_range) - 
                       (beacon_timer_range / 2);
