@@ -60,9 +60,10 @@ static void loadConfig() {
     for (byte i = 0; i < sizeof config; ++i)
         p[i] = eeprom_read_byte((byte*) i);
     // if loaded config is not valid, replace it with defaults
-    if (config.check != 150) {
-        config.check = 150;
-        config.freq = 9;
+    if (config.check != 151) {
+        Serial.println("Invalid, loading.");
+        config.check = 151;
+        config.freq = 4;
         config.rcv_group = 0;
         config.rcv_id = 1;
         config.bcn_group = 1;
@@ -71,6 +72,7 @@ static void loadConfig() {
     }
     showConfig();
     rf12_initialize(config.rcv_id, code2type(config.freq), config.rcv_group);
+    Serial.println("Init.");
 }
 
 static void saveConfig() {
