@@ -27,6 +27,12 @@
 #define BEACON_TIMER_BASE 3000 // Approximately how often to beacon.
 #define GAYDAR_TIMER 15000 // How frequently to update our badge count average.
 
+extern "C"
+{
+  #include "tlc5940.h"
+  #include "main.h"
+}
+
 MilliTimer sendTimer;
 MilliTimer gaydarTimer;
 
@@ -87,9 +93,9 @@ static void loadConfig() {
     for (byte i = 0; i < sizeof config; ++i)
         p[i] = eeprom_read_byte((byte*) i);
     // if loaded config is not valid, replace it with defaults
-    if (config.check != 152) {
-        config.check = 152;
-        config.freq = 9;
+    if (config.check != 153) {
+        config.check = 153;
+        config.freq = 4;
         config.rcv_group = 0;
         config.rcv_id = 1;
         config.bcn_group = 0;
@@ -120,6 +126,7 @@ void setup () {
     Serial.println(57600);
     Serial.println("Send and Receive");
     loadConfig();
+    startTLC();
 }
 
 void loop () {
@@ -192,4 +199,6 @@ void loop () {
         Serial.print("->|BCN badge number ");
         Serial.println(config.badge_id);
     }
+    loopbody();
+//    TLC5940_SetGS_And_GS_PWM();
 }
