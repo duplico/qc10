@@ -27,38 +27,20 @@
 #define LEARNING 1 // Whether to auto-negotiate my ID.
 #define RECEIVE_WINDOW 9 // How many beacon cycles to average together.
 
-#define BEACON_TIMER_BASE 3000 // Approximately how often to beacon.
-#define GAYDAR_TIMER 15000 // How frequently to update our badge count average.
-
 extern "C"
 {
   #include "tlc5940.h"
   #include "main.h"
 }
 
-MilliTimer sendTimer;
-MilliTimer gaydarTimer;
-
-byte id_payload[] = {0, 0}; // Our badge ID in byte array form to beacon.
-
-int received_numbers[RECEIVE_WINDOW] = {0}; // Sliding window of beacon counts.
-byte receive_cycle = 0; // Current window position
-
-int beacon_timer_range = 500; // How much to fuzz the beacon interval
-int beacon_timer_base = BEACON_TIMER_BASE; // Beacon interval base
-int beacon_timer = beacon_timer_base; // Fuzzed beacon interval
-
-int gaydar_timer = GAYDAR_TIMER; // How often to average our beacon window.
-
-
-// NB: It's nice if the listen duration is divisible by num_badges
-unsigned int R_SLEEP_DURATION = 5000;
+// NB: It's nice if the listen duration is divisible by BADGES_IN_SYSTEM
+unsigned int R_SLEEP_DURATION = 5000; // TODO: EEPROM.
 unsigned int R_LISTEN_DURATION = 5000;
 unsigned int R_LISTEN_WAKE_PAD = 1000;
 unsigned int R_NUM_SLEEP_CYCLES = 6;
 unsigned int NUM_BADGES = BADGES_IN_SYSTEM;
 
-
+// Running timer results for our busy-waiting loop.
 unsigned long last_time;
 unsigned long current_time;
 
@@ -107,7 +89,7 @@ static void showConfig() {
     Serial.println();
 }
 
-// Load our configuration from EEPROM (also computing our ID payload).
+// Load our configuration from EEPROM (also computing some payload).
 static void loadConfig() {
     byte* p = (byte*) &config;
     for (byte i = 0; i < sizeof config; ++i)
@@ -124,9 +106,11 @@ static void loadConfig() {
         config.badges_in_system = BADGES_IN_SYSTEM;
         saveConfig();
     }
-    // Convert our badge ID int into a 2-length byte array.
-    id_payload[0] = (config.badge_id & 0b1111111100000000) >> 8;
-    id_payload[1] = (config.badge_id & 0b11111111);
+    
+    // Store the parts of our config that rarely change in the outgoing payload.
+    out_payload.from_id = config.badge_id;
+    out_payload.badges_in_system = NUM_BADGES;
+    out_payload.ver = config.check;
     
     NUM_BADGES = config.badges_in_system;
     
@@ -147,7 +131,6 @@ static void saveConfig() {
 void setup () {
     Serial.begin(57600);
     Serial.println(57600);
-    Serial.println("Send and Receive");
     loadConfig();
 //    startTLC();
     last_time = millis();
@@ -155,29 +138,50 @@ void setup () {
 }
 
 void loop () {
+  // millisecond clock in the current sleep cycle:
   static uint16_t t = 0;
+  // number of the current sleep cycle:
   static uint16_t cycle_number = 0;
+  // whether we've successfully beaconed this cycle:
   static boolean sent_this_cycle = false;
+  // at what t should we start trying to beacon:
   static uint16_t t_to_send = R_SLEEP_DURATION + (R_LISTEN_WAKE_PAD / 2) + 
     ((R_LISTEN_DURATION - R_LISTEN_WAKE_PAD) / NUM_BADGES) * config.badge_id;
+  // my "authority", lower is more authoritative
   static uint16_t my_authority = config.badge_id;
+  // lowest badge id I've seen this cycle, used to calculate my next initial authority
+  // (my authority is the lowest badge to whom I can directly communicate; if one
+  //  of my neighbors is communicating directly with a lower id badge than I am,
+  //  that neighbor will be more authoritative than me.):
   static uint16_t lowest_badge_this_cycle = config.badge_id;
+  // whether the radio is asleep:
   static boolean badge_is_sleeping = false;
   
+  // Compute t using elapsed time since last iteration of this loop.
   current_time = millis();
   t += (current_time - last_time);
   last_time = current_time;
 
+  // Radio duty cycle.
   if (cycle_number != R_NUM_SLEEP_CYCLES && t < R_SLEEP_DURATION) {
-    // Radio sleeps unless we're in the insomniac cycle
+    // Radio sleeps unless we're in the last sleep cycle of an interval
     if (!badge_is_sleeping) {
+      // Go to sleep if necessary, printing cycle information.
       rf12_sleep(0);
+      Serial.print("--|Cycle ");
+      Serial.print(cycle_number);
+      Serial.print("/");
+      Serial.print(R_NUM_SLEEP_CYCLES);
+      Serial.print(" t:");
+      Serial.println(t);
       Serial.println("--|Sleeping radio.");
       badge_is_sleeping = true;
     }
   }
   else if (t < R_SLEEP_DURATION + R_LISTEN_DURATION) {
+    // This is the part of the sleep cycle during which we should be listening
     if (badge_is_sleeping) {
+      // Wake up if necessary, printing cycle information.
       rf12_sleep(-1);
       Serial.print("--|Cycle ");
       Serial.print(cycle_number);
@@ -191,7 +195,7 @@ void loop () {
     // Radio listens
     
     if (rf12_recvDone() && rf12_crc == 0) {
-        // We've received something. Is it the right length?
+        // We've received something. Is it valid?
         if (rf12_len == sizeof in_payload) {      
             // TODO: confirm correct version.      
             // Print the metadata and badge ID of the beacon we've received.
@@ -247,12 +251,9 @@ void loop () {
     if (!sent_this_cycle && t > t_to_send) {
       // Beacon.
       Serial.println("--|BCN required.");
-      out_payload.from_id = config.badge_id;
       out_payload.authority = my_authority;
       out_payload.cycle_number = cycle_number;
       out_payload.timestamp = t;
-      out_payload.badges_in_system = NUM_BADGES;
-      out_payload.ver = config.check;
       if (rf12_canSend()) {
         sent_this_cycle = true;
         // Beacon.
