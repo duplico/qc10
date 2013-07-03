@@ -126,7 +126,7 @@ void setup () {
     Serial.println(57600);
     Serial.println("Send and Receive");
     loadConfig();
-    startTLC();
+//    startTLC();
 }
 
 void loop () {
@@ -199,6 +199,6 @@ void loop () {
         Serial.print("->|BCN badge number ");
         Serial.println(config.badge_id);
     }
-    loopbody();
+//    loopbody();
 //    TLC5940_SetGS_And_GS_PWM();
 }

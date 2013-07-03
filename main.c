@@ -5,11 +5,28 @@
 
 #include "tlc5940.h"
 
-#define RED 0
-#define GREEN 1
-#define BLUE 2
+#define O_RED 0
+#define O_ORG 1
+#define O_YEL 2
+#define O_GRN 3
+#define O_BLU 4
+#define O_PNK 5
+#define I_RED 6
+#define I_ORG 7
+#define I_YEL 8
+#define I_GRN 9
+#define I_BLU 10
+#define I_PNK 11
+#define F_RED 12
+#define F_GRN 13
+#define F_BLU 14
+#define L_SYS 15
 
 #define NUM_RGB_LEDS 4
+
+#define NUM_LEDS 16
+#define QCR_STEP 4
+#define QCR_DELAY 1000
 
 typedef struct tagRGBFade
 {
@@ -20,51 +37,136 @@ typedef struct tagRGBFade
   uint16_t pause;  
 } RGBFade;
 
-float RGBSource[3] = { 0, 0, 0 };
-float RGBDest[3];
-float RGBInc[3];
+typedef struct tagQCRing {
+  uint8_t o_red;
+  uint8_t o_org;
+  uint8_t o_yel;
+  uint8_t o_grn;
+  uint8_t o_blu;
+  uint8_t o_pnk;
 
-const RGBFade rainbow[] =
-{
-  { 255, 0, 0, 4, 1000 },        // Red
-  { 255, 127, 0, 4, 1000 },      // Orange
-  { 255, 255, 0, 4, 1000 },      // Yellow
-  { 0, 255, 0, 4, 1000 },        // Green
-  { 0, 0, 255, 4, 1000 },        // Blue
-  { 111, 0, 255, 4, 1000 },      // Indigo
-  { 143, 0, 255, 4, 1000 },      // Violet
+  uint8_t i_red;
+  uint8_t i_org;
+  uint8_t i_yel;
+  uint8_t i_grn;
+  uint8_t i_blu;
+  uint8_t i_pnk;
+  
+  uint8_t f_red;
+  uint8_t f_grn;
+  uint8_t f_blu;
+  
+  uint8_t l_sys;
+  
+  uint16_t step_delay;
+  uint16_t pattern_delay;
+  
+} QCRing;
+
+float QCRSource[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+float QCRDest[16];
+float QCRInc[16];
+
+const QCRing circle[] = {
+  {1, 0, 0, 0, 0, 0, 0,
+   1, 0, 0, 0, 0, 0, 0,
+   0, 0, 0, 0, QCR_STEP,
+   QCR_DELAY},
+  {1, 1, 0, 0, 0, 0, 0,
+   1, 1, 0, 0, 0, 0, 0,
+   0, 0, 0, 0, QCR_STEP,
+   QCR_DELAY},
+  {1, 1, 1, 0, 0, 0, 0,
+   1, 1, 1, 0, 0, 0, 0,
+   0, 0, 0, 0, QCR_STEP,
+   QCR_DELAY},
+  {1, 1, 1, 1, 0, 0, 0,
+   1, 1, 1, 1, 0, 0, 0,
+   0, 0, 0, 0, QCR_STEP,
+   QCR_DELAY},
+  {1, 1, 1, 1, 1, 0, 0,
+   1, 1, 1, 1, 1, 0, 0,
+   0, 0, 0, 0, QCR_STEP,
+   QCR_DELAY},
+  {1, 1, 1, 1, 1, 1, 0,
+   1, 1, 1, 1, 1, 1, 0,
+   0, 0, 0, 0, QCR_STEP,
+   QCR_DELAY},
+  {1, 1, 1, 1, 1, 1, 1,
+   1, 1, 1, 1, 1, 1, 1,
+   0, 0, 0, 0, QCR_STEP,
+   QCR_DELAY},
+  {0, 0, 1, 1, 1, 1, 1,
+   0, 1, 1, 1, 1, 1, 1,
+   0, 0, 0, 0, QCR_STEP,
+   QCR_DELAY},
+  {0, 0, 1, 1, 1, 1, 1,
+   0, 0, 1, 1, 1, 1, 1,
+   0, 0, 0, 0, QCR_STEP,
+   QCR_DELAY},
+  {0, 0, 0, 1, 1, 1, 1,
+   0, 0, 0, 1, 1, 1, 1,
+   0, 0, 0, 0, QCR_STEP,
+   QCR_DELAY},
+  {0, 0, 0, 0, 1, 1, 1,
+   0, 0, 0, 0, 1, 1, 1,
+   0, 0, 0, 0, QCR_STEP,
+   QCR_DELAY},
+  {0, 0, 0, 0, 0, 1, 1,
+   0, 0, 0, 0, 0, 1, 1,
+   0, 0, 0, 0, QCR_STEP,
+   QCR_DELAY},
+  {0, 0, 0, 0, 0, 0, 1,
+   0, 0, 0, 0, 0, 0, 1,
+   0, 0, 0, 0, QCR_STEP,
+   QCR_DELAY},
 };
 
-void setupTargetColour( RGBFade target )
+void setupTargetColour( QCRing target )
 {
-  RGBDest[RED] = target.r;
-  RGBDest[GREEN] = target.g;
-  RGBDest[BLUE] = target.b;
+  QCRDest[O_RED] = target.o_red;
+  QCRDest[O_ORG] = target.o_org;
+  QCRDest[O_YEL] = target.o_yel;
+  QCRDest[O_GRN] = target.o_grn;
+  QCRDest[O_BLU] = target.o_blu;
+  QCRDest[O_PNK] = target.o_pnk;
+  QCRDest[I_RED] = target.i_red;
+  QCRDest[I_ORG] = target.i_org;
+  QCRDest[I_YEL] = target.i_yel;
+  QCRDest[I_GRN] = target.i_grn;
+  QCRDest[I_BLU] = target.i_blu;
+  QCRDest[I_PNK] = target.i_pnk;
+  QCRDest[F_RED] = target.f_red;
+  QCRDest[F_GRN] = target.f_grn;
+  QCRDest[F_BLU] = target.f_blu;
+  QCRDest[L_SYS] = target.l_sys;
 
-  RGBInc[RED] = ( RGBSource[RED] - RGBDest[RED] ) / 256;
-  RGBInc[GREEN] = ( RGBSource[GREEN] - RGBDest[GREEN] ) / 256;
-  RGBInc[BLUE] = ( RGBSource[BLUE] - RGBDest[BLUE] ) / 256;
+  QCRInc[O_RED] = (QCRSource[O_RED] - QCRDest[O_RED]) / 256;
+  QCRInc[O_ORG] = (QCRSource[O_ORG] - QCRDest[O_ORG]) / 256;
+  QCRInc[O_YEL] = (QCRSource[O_YEL] - QCRDest[O_YEL]) / 256;
+  QCRInc[O_GRN] = (QCRSource[O_GRN] - QCRDest[O_GRN]) / 256;
+  QCRInc[O_BLU] = (QCRSource[O_BLU] - QCRDest[O_BLU]) / 256;
+  QCRInc[O_PNK] = (QCRSource[O_PNK] - QCRDest[O_PNK]) / 256;
+  QCRInc[I_RED] = (QCRSource[I_RED] - QCRDest[I_RED]) / 256;
+  QCRInc[I_ORG] = (QCRSource[I_ORG] - QCRDest[I_ORG]) / 256;
+  QCRInc[I_YEL] = (QCRSource[I_YEL] - QCRDest[I_YEL]) / 256;
+  QCRInc[I_GRN] = (QCRSource[I_GRN] - QCRDest[I_GRN]) / 256;
+  QCRInc[I_BLU] = (QCRSource[I_BLU] - QCRDest[I_BLU]) / 256;
+  QCRInc[I_PNK] = (QCRSource[I_PNK] - QCRDest[I_PNK]) / 256;
+  QCRInc[F_RED] = (QCRSource[F_RED] - QCRDest[F_RED]) / 256;
+  QCRInc[F_GRN] = (QCRSource[F_GRN] - QCRDest[F_GRN]) / 256;
+  QCRInc[F_BLU] = (QCRSource[F_BLU] - QCRDest[F_BLU]) / 256;
+  QCRInc[L_SYS] = (QCRSource[L_SYS] - QCRDest[L_SYS]) / 256;
 }
 
-void fadeTo( uint16_t num_leds )
+void fadeTo()
 {
-  uint8_t r, g, b;
-  uint16_t i, j;
+  uint16_t i;
 
-  r = (uint8_t) ( RGBSource[RED] );
-  g = (uint8_t) ( RGBSource[GREEN] );
-  b = (uint8_t) ( RGBSource[BLUE] );
-
-  for (i = 0; i < num_leds; i++)
-  {
-    TLC5940_SetGS((i * 3) % numChannels, pgm_read_word(&TLC5940_GammaCorrect[r]));
-    TLC5940_SetGS((i * 3 + 1) % numChannels, pgm_read_word(&TLC5940_GammaCorrect[g]));
-    TLC5940_SetGS((i * 3 + 2) % numChannels, pgm_read_word(&TLC5940_GammaCorrect[b]));
+  for (i = 0; i < NUM_LEDS; i++) {
+    TLC5940_SetGS(i, pgm_read_word(&TLC5940_GammaCorrect[(uint8_t)(QCRSource[i])]));
+    QCRSource[i] -= QCRInc[i];
   }
-  
-  RGBSource[RED] -= RGBInc[RED];
-  RGBSource[GREEN] -= RGBInc[GREEN];
-  RGBSource[BLUE] -= RGBInc[BLUE];
 }
 
 void startTLC() {
@@ -90,25 +192,25 @@ void loopbody() {
   static uint8_t count = 0;
   
   static uint8_t curIndex = 0;
-  static uint8_t maxIndex = sizeof( rainbow ) / sizeof( RGBFade );
+  static uint8_t maxIndex = sizeof( circle ) / sizeof( QCRing );
 
     if (gsUpdateFlag) return; // Do nothing if we can't update the greyscale values.
     if( count == 0 )
     {
-      _delay_ms(rainbow[curIndex].pause);
-      setupTargetColour( rainbow[curIndex] );
+      _delay_ms(circle[curIndex].pattern_delay);
+      setupTargetColour( circle[curIndex] );
       curIndex++;
       if( curIndex >= maxIndex)
       {
         curIndex = 0;
       }
     }
-    fadeTo( NUM_RGB_LEDS );
+    fadeTo();
     
     TLC5940_SetGSUpdateFlag();
     // usefully wraps at 255.
     count++;
-    _delay_ms(rainbow[curIndex].stepPause);
+    _delay_ms(circle[curIndex].step_delay);
 }
 
 int themain(void) {
