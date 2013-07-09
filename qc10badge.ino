@@ -21,11 +21,10 @@
 #include <avr/eeprom.h>
 #include <avr/pgmspace.h>
 
-#define CONFIG_STRUCT_VERSION 154
+#define CONFIG_STRUCT_VERSION 155
 #define BADGES_IN_SYSTEM 100
 
 #define LEARNING 1 // Whether to auto-negotiate my ID.
-#define RECEIVE_WINDOW 9 // How many beacon cycles to average together.
 
 extern "C"
 {
@@ -34,11 +33,10 @@ extern "C"
 }
 
 // NB: It's nice if the listen duration is divisible by BADGES_IN_SYSTEM
-unsigned int R_SLEEP_DURATION = 5000; // TODO: EEPROM.
-unsigned int R_LISTEN_DURATION = 5000;
-unsigned int R_LISTEN_WAKE_PAD = 1000;
-unsigned int R_NUM_SLEEP_CYCLES = 6;
-unsigned int NUM_BADGES = BADGES_IN_SYSTEM;
+#define R_SLEEP_DURATION = 5000; // TODO: EEPROM.
+#define R_LISTEN_DURATION = 5000;
+#define R_LISTEN_WAKE_PAD = 1000;
+#define R_NUM_SLEEP_CYCLES = 6;
 
 // Running timer results for our busy-waiting loop.
 unsigned long last_time;
@@ -51,7 +49,9 @@ struct {
     uint8_t check;
     uint8_t freq, rcv_group, rcv_id, bcn_group, bcn_id;
     uint16_t badge_id;
-    uint8_t badges_in_system; // TODO: make an unsigned int.
+    uint16_t badges_in_system;
+    uint16_t r_sleep_duration, r_listen_duration, r_listen_wake_pad,
+             r_num_sleep_cycles;
 } config;
 
 // Payload struct
@@ -104,15 +104,17 @@ static void loadConfig() {
         config.bcn_id = 1;
         config.badge_id = 1;
         config.badges_in_system = BADGES_IN_SYSTEM;
+        config.r_sleep_duration = R_SLEEP_DURATION;
+        config.r_listen_duration = R_LISTEN_DURATION;
+        config.r_listen_wake_pad = R_LISTEN_WAKE_PAD;
+        config.r_num_sleep_cycles = R_NUM_SLEEP_CYCLES;
         saveConfig();
     }
     
     // Store the parts of our config that rarely change in the outgoing payload.
     out_payload.from_id = config.badge_id;
-    out_payload.badges_in_system = NUM_BADGES;
+    out_payload.badges_in_system = config.badges_in_system;
     out_payload.ver = config.check;
-    
-    NUM_BADGES = config.badges_in_system;
     
     showConfig();
     rf12_initialize(config.rcv_id, code2type(config.freq), 1);
@@ -145,8 +147,8 @@ void loop () {
   // whether we've successfully beaconed this cycle:
   static boolean sent_this_cycle = false;
   // at what t should we start trying to beacon:
-  static uint16_t t_to_send = R_SLEEP_DURATION + (R_LISTEN_WAKE_PAD / 2) + 
-    ((R_LISTEN_DURATION - R_LISTEN_WAKE_PAD) / NUM_BADGES) * config.badge_id;
+  static uint16_t t_to_send = config.r_sleep_duration + (config.r_listen_wake_pad / 2) + 
+    ((config.r_listen_duration - config.r_listen_wake_pad) / config.badges_in_system) * config.badge_id;
   // my "authority", lower is more authoritative
   static uint16_t my_authority = config.badge_id;
   // lowest badge id I've seen this cycle, used to calculate my next initial authority
@@ -163,7 +165,7 @@ void loop () {
   last_time = current_time;
 
   // Radio duty cycle.
-  if (cycle_number != R_NUM_SLEEP_CYCLES && t < R_SLEEP_DURATION) {
+  if (cycle_number != config.r_num_sleep_cycles && t < config.r_sleep_duration) {
     // Radio sleeps unless we're in the last sleep cycle of an interval
     if (!badge_is_sleeping) {
       // Go to sleep if necessary, printing cycle information.
@@ -171,7 +173,7 @@ void loop () {
       Serial.print("--|Cycle ");
       Serial.print(cycle_number);
       Serial.print("/");
-      Serial.print(R_NUM_SLEEP_CYCLES);
+      Serial.print(config.r_num_sleep_cycles);
       Serial.print(" t:");
       Serial.println(t);
       Serial.println("--|Sleeping radio.");
