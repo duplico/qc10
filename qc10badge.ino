@@ -24,6 +24,7 @@
 #define CONFIG_STRUCT_VERSION 155
 #define BADGES_IN_SYSTEM 100
 
+//EEPROM the learning state?
 #define LEARNING 1 // Whether to auto-negotiate my ID.
 
 extern "C"
@@ -32,11 +33,11 @@ extern "C"
   #include "main.h"
 }
 
-// NB: It's nice if the listen duration is divisible by BADGES_IN_SYSTEM
-#define R_SLEEP_DURATION = 5000; // TODO: EEPROM.
-#define R_LISTEN_DURATION = 5000;
-#define R_LISTEN_WAKE_PAD = 1000;
-#define R_NUM_SLEEP_CYCLES = 6;
+// NB: It's nice if the listen duration is divisible by BADGES_IN_SYSTEM 
+#define R_SLEEP_DURATION 5000
+#define R_LISTEN_DURATION 5000
+#define R_LISTEN_WAKE_PAD 1000
+#define R_NUM_SLEEP_CYCLES 6
 
 // Running timer results for our busy-waiting loop.
 unsigned long last_time;
@@ -180,7 +181,7 @@ void loop () {
       badge_is_sleeping = true;
     }
   }
-  else if (t < R_SLEEP_DURATION + R_LISTEN_DURATION) {
+  else if (t < config.r_sleep_duration + config.r_listen_duration) {
     // This is the part of the sleep cycle during which we should be listening
     if (badge_is_sleeping) {
       // Wake up if necessary, printing cycle information.
@@ -188,7 +189,7 @@ void loop () {
       Serial.print("--|Cycle ");
       Serial.print(cycle_number);
       Serial.print("/");
-      Serial.print(R_NUM_SLEEP_CYCLES);
+      Serial.print(config.r_num_sleep_cycles);
       Serial.print(" t:");
       Serial.println(t);
       Serial.println("--|Waking radio.");
@@ -223,8 +224,8 @@ void loop () {
                 saveConfig();
                 Serial.print("--|Duplicate ID detected. Incrementing mine to ");
                 Serial.println(config.badge_id);
-                t_to_send = R_SLEEP_DURATION + (R_LISTEN_WAKE_PAD / 2) + 
-                            ((R_LISTEN_DURATION - R_LISTEN_WAKE_PAD) / NUM_BADGES) * config.badge_id;
+                t_to_send = config.r_sleep_duration + (config.r_listen_wake_pad / 2) + 
+                            ((config.r_listen_duration - config.r_listen_wake_pad) / config.badges_in_system) * config.badge_id;
                 // TODO: don't pick an ID that we've heard recently/before.
             }
 
