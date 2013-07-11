@@ -28,15 +28,6 @@
 #define QCR_STEP 4
 #define QCR_DELAY 1000
 
-typedef struct tagRGBFade
-{
-  uint8_t r;
-  uint8_t g;
-  uint8_t b;
-  uint16_t stepPause;
-  uint16_t pause;  
-} RGBFade;
-
 typedef struct tagQCRing {
   uint8_t o_red;
   uint8_t o_org;

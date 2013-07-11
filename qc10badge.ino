@@ -61,6 +61,9 @@ struct qcbpayload {
   uint8_t ver;
 } in_payload, out_payload;
 
+byte badges_seen[BADGES_IN_SYSTEM];
+byte neighbor_badges[BADGES_IN_SYSTEM] = {0}; // All zeros.
+
 // Convert our configuration frequency code to the actual frequency.
 static word code2freq(byte code) {
     return code == 4 ? 433 : code == 9 ? 915 : 868;
@@ -110,6 +113,8 @@ static void loadConfig() {
         config.r_listen_wake_pad = R_LISTEN_WAKE_PAD;
         config.r_num_sleep_cycles = R_NUM_SLEEP_CYCLES;
         saveConfig();
+        
+        memset(badges_seen, 0, BADGES_IN_SYSTEM);
     }
     
     // Store the parts of our config that rarely change in the outgoing payload.
@@ -121,6 +126,26 @@ static void loadConfig() {
     rf12_initialize(config.rcv_id, code2type(config.freq), 1);
 }
 
+static boolean has_seen_badge(uint16_t badge_id) {
+  return (badges_seen[badge_id] & 0b0000001);
+}
+
+static boolean can_see_badge(uint16_t badge_id) {
+  return (neighbor_badges[badge_id] & 0b0000001);
+}
+
+// Returns true if this is the first time we've seen the badge.
+static boolean just_saw_badge(uint16_t badge_id) {
+  neighbor_badges[badge_id] |= 0b00000011;
+  boolean seen_before = has_seen_badge(badge_id);
+  badges_seen[badge_id] |= 0b00000001;
+  if (seen_before) {
+    return false;
+  }
+  // TODO: save badges_seen to EEPROM.
+  return true;
+}
+
 // Save our current configuration to the EEPROM. Also calls loadConfig().
 // In general, this should be called after any configuration change because it
 // does a little housekeeping.
@@ -129,6 +154,11 @@ static void saveConfig() {
     for (byte i = 0; i < sizeof config; ++i)
         eeprom_write_byte((byte*) i, p[i]);
     loadConfig();
+}
+
+static void saveBadge(uint16_t badge_id) {
+  int badge_address = (sizeof config) + badge_id;
+  eeprom_write_byte((uint8_t *) badge_id, badges_seen[badge_id]);
 }
 
 void setup () {
