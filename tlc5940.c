@@ -289,35 +289,35 @@ void TLC5940_Init(void) {
   SPSR = (1 << SPI2X);
 #endif // TLC5940_USART_MSPIM
 
-  // CTC with OCR0A as TOP
-  TCCR0A = (1 << WGM01);
+  // CTC with OCR2A as TOP
+  TCCR2A = (1 << WGM01);
 
   // clk_io/256 (From prescaler)
-  TCCR0B = (1 << CS02);
+  TCCR2B = (1 << CS02);
 
 #if (TLC5940_PWM_BITS == 12)
-  OCR0A = 15; // Generate an interrupt every 4096 clock cycles
+  OCR2A = 15; // Generate an interrupt every 4096 clock cycles
 #elif (TLC5940_PWM_BITS == 11)
-  OCR0A = 7;  // Generate an interrupt every 2048 clock cycles
+  OCR2A = 7;  // Generate an interrupt every 2048 clock cycles
 #elif (TLC5940_PWM_BITS == 10)
-  OCR0A = 3;  // Generate an interrupt every 1024 clock cycles
+  OCR2A = 3;  // Generate an interrupt every 1024 clock cycles
 #elif (TLC5940_PWM_BITS == 9)
-  OCR0A = 1;  // Generate an interrupt every 512 clock cycles
+  OCR2A = 1;  // Generate an interrupt every 512 clock cycles
 #elif (TLC5940_PWM_BITS == 8)
-  OCR0A = 0;  // Generate an interrupt every 256 clock cycles
+  OCR2A = 0;  // Generate an interrupt every 256 clock cycles
 #else
 #error "TLC5940_PWM_BITS must be 8, 9, 10, 11, or 12"
 #endif // TLC5940_PWM_BITS
 
   // Enable Timer/Counter0 Compare Match A interrupt
-  TIMSK0 |= (1 << OCIE0A);
+  TIMSK2 |= (1 << OCIE2A);
 }
 
 #if (TLC5940_INCLUDE_DEFAULT_ISR)
 #if (TLC5940_ENABLE_MULTIPLEXING)
 #if (TLC5940_USE_GPIOR0)
 // This interrupt will get called every 2^TLC5940_PWM_BITS clock cycles
-ISR(TIMER0_COMPA_vect) {
+ISR(TIMER2_COMPA_vect) {
   static uint8_t *pFront = &gsData[0][0]; // read pointer
   static uint8_t row, cycle; // initialized to 0 by default
   setHigh(BLANK_PORT, BLANK_PIN);
@@ -353,7 +353,7 @@ ISR(TIMER0_COMPA_vect) {
 }
 #else // TLC5940_USE_GPIOR0
 // This interrupt will get called every 2^TLC5940_PWM_BITS clock cycles
-ISR(TIMER0_COMPA_vect) {
+ISR(TIMER2_COMPA_vect) {
   static uint8_t *pFront = &gsData[0][0]; // read pointer
   static uint8_t xlatNeedsPulse; // initialized to 0 by default
   static uint8_t row, cycle; // initialized to 0 by default
@@ -392,7 +392,7 @@ ISR(TIMER0_COMPA_vect) {
 #else // TLC5940_ENABLE_MULTIPLEXING
 #if (TLC5940_USE_GPIOR0)
 // This interrupt will get called every 2^TLC5940_PWM_BITS clock cycles
-ISR(TIMER0_COMPA_vect) {
+ISR(TIMER2_COMPA_vect) {
   setHigh(BLANK_PORT, BLANK_PIN);
   if (getValue(TLC5940_FLAGS, TLC5940_FLAG_XLAT_NEEDS_PULSE)) {
     setLow(TLC5940_FLAGS, TLC5940_FLAG_XLAT_NEEDS_PULSE);
@@ -411,7 +411,7 @@ ISR(TIMER0_COMPA_vect) {
 }
 #else // TLC5940_USE_GPIOR0
 // This interrupt will get called every 2^TLC5940_PWM_BITS clock cycles
-ISR(TIMER0_COMPA_vect) {
+ISR(TIMER2_COMPA_vect) {
   static uint8_t xlatNeedsPulse; // initialized to 0 by default
   setHigh(BLANK_PORT, BLANK_PIN);
   if (xlatNeedsPulse) {
