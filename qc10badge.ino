@@ -16,7 +16,6 @@
 //
 // Otherwise:
 // (c) 13-Dec-2012 George Louthan <georgerlouth@nthefourth.com>
-
 #include <JeeLib.h>
 #include <avr/eeprom.h>
 #include <avr/pgmspace.h>
@@ -164,13 +163,15 @@ static void saveBadge(uint16_t badge_id) {
 void setup () {
     Serial.begin(57600);
     Serial.println(57600);
-    loadConfig();
-//    startTLC();
+//    loadConfig();
+    startTLC();
     last_time = millis();
     current_time = millis();
 }
 
 void loop () {
+  
+  static unsigned long next_led_invocation = 0;
   // millisecond clock in the current sleep cycle:
   static uint16_t t = 0;
   // number of the current sleep cycle:
@@ -192,8 +193,17 @@ void loop () {
   
   // Compute t using elapsed time since last iteration of this loop.
   current_time = millis();
+  Serial.println(current_time);
   t += (current_time - last_time);
   last_time = current_time;
+  if (current_time >= next_led_invocation) {
+    next_led_invocation = loopbody() + current_time;
+    Serial.println(millis());
+    Serial.println(current_time);
+    Serial.print(" ");
+    Serial.println(next_led_invocation);
+  }
+
 
   // Radio duty cycle.
   if (cycle_number != config.r_num_sleep_cycles && t < config.r_sleep_duration) {
@@ -241,11 +251,9 @@ void loop () {
             Serial.print(in_payload.from_id);
             Serial.print(" authority ");
             Serial.println(in_payload.authority);
-            /*
             // Increment our beacon count in the current position in our
             // sliding window.
-            received_numbers[receive_cycle]+=1;
-            */
+            //received_numbers[receive_cycle]+=1;
             // If we're in ID learning mode, and we've heard an ID that we
             // thought was supposed to be us:
             if (LEARNING && in_payload.from_id == config.badge_id) {
@@ -330,6 +338,5 @@ void loop () {
         Serial.print("--|Badge count update: ");
         Serial.println(avg_seen);
     }
-//    loopbody();
-*/
+    */
 }

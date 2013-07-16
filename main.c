@@ -5,6 +5,8 @@
 
 #include "tlc5940.h"
 
+#define FADE 1
+
 #define O_RED 0
 #define O_ORG 1
 #define O_YEL 2
@@ -22,11 +24,9 @@
 #define F_BLU 14
 #define L_SYS 15
 
-#define NUM_RGB_LEDS 4
-
 #define NUM_LEDS 16
-#define QCR_STEP 4
-#define QCR_DELAY 1000
+#define QCR_STEP 0
+#define QCR_DELAY 0
 
 typedef struct tagQCRing {
   uint8_t o_red;
@@ -59,56 +59,52 @@ float QCRDest[16];
 float QCRInc[16];
 
 const QCRing circle[] = {
-  {1, 0, 0, 0, 0, 0, 0,
-   1, 0, 0, 0, 0, 0, 0,
+  {128, 0, 0, 0, 0, 0,
+   128, 0, 0, 0, 0, 0,
    0, 0, 0, 0, QCR_STEP,
    QCR_DELAY},
-  {1, 1, 0, 0, 0, 0, 0,
-   1, 1, 0, 0, 0, 0, 0,
+  {128, 128, 0, 0, 0, 0,
+   128, 128, 0, 0, 0, 0,
    0, 0, 0, 0, QCR_STEP,
    QCR_DELAY},
-  {1, 1, 1, 0, 0, 0, 0,
-   1, 1, 1, 0, 0, 0, 0,
+  {128, 128, 128, 0, 0, 0,
+   128, 128, 128, 0, 0, 0,
    0, 0, 0, 0, QCR_STEP,
    QCR_DELAY},
-  {1, 1, 1, 1, 0, 0, 0,
-   1, 1, 1, 1, 0, 0, 0,
+  {128, 128, 128, 128, 0, 0,
+   128, 128, 128, 128, 0, 0,
    0, 0, 0, 0, QCR_STEP,
    QCR_DELAY},
-  {1, 1, 1, 1, 1, 0, 0,
-   1, 1, 1, 1, 1, 0, 0,
+  {128, 128, 128, 128, 128, 0,
+   128, 128, 128, 128, 128, 0,
    0, 0, 0, 0, QCR_STEP,
    QCR_DELAY},
-  {1, 1, 1, 1, 1, 1, 0,
-   1, 1, 1, 1, 1, 1, 0,
+  {128, 128, 128, 128, 128, 128,
+   128, 128, 128, 128, 128, 128,
    0, 0, 0, 0, QCR_STEP,
    QCR_DELAY},
-  {1, 1, 1, 1, 1, 1, 1,
-   1, 1, 1, 1, 1, 1, 1,
+  {0, 128, 128, 128, 128, 128,
+   0, 128, 128, 128, 128, 128,
    0, 0, 0, 0, QCR_STEP,
    QCR_DELAY},
-  {0, 0, 1, 1, 1, 1, 1,
-   0, 1, 1, 1, 1, 1, 1,
+  {0, 0, 128, 128, 128, 128,
+   0, 0, 128, 128, 128, 128,
    0, 0, 0, 0, QCR_STEP,
    QCR_DELAY},
-  {0, 0, 1, 1, 1, 1, 1,
-   0, 0, 1, 1, 1, 1, 1,
+  {0, 0, 0, 128, 128, 128,
+   0, 0, 0, 128, 128, 128,
    0, 0, 0, 0, QCR_STEP,
    QCR_DELAY},
-  {0, 0, 0, 1, 1, 1, 1,
-   0, 0, 0, 1, 1, 1, 1,
+  {0, 0, 0, 0, 128, 128,
+   0, 0, 0, 0, 128, 128,
    0, 0, 0, 0, QCR_STEP,
    QCR_DELAY},
-  {0, 0, 0, 0, 1, 1, 1,
-   0, 0, 0, 0, 1, 1, 1,
+  {0, 0, 0, 0, 0, 128,
+   0, 0, 0, 0, 0, 128,
    0, 0, 0, 0, QCR_STEP,
    QCR_DELAY},
-  {0, 0, 0, 0, 0, 1, 1,
-   0, 0, 0, 0, 0, 1, 1,
-   0, 0, 0, 0, QCR_STEP,
-   QCR_DELAY},
-  {0, 0, 0, 0, 0, 0, 1,
-   0, 0, 0, 0, 0, 0, 1,
+  {0, 0, 0, 0, 0, 0,
+   0, 0, 0, 0, 0, 0,
    0, 0, 0, 0, QCR_STEP,
    QCR_DELAY},
 };
@@ -156,7 +152,11 @@ void fadeTo()
 
   for (i = 0; i < NUM_LEDS; i++) {
     TLC5940_SetGS(i, pgm_read_word(&TLC5940_GammaCorrect[(uint8_t)(QCRSource[i])]));
+    #if FADE
     QCRSource[i] -= QCRInc[i];
+    #else
+    QCRSource[i] = QCRDest[i];
+    #endif
   }
 }
 
@@ -179,29 +179,38 @@ void startTLC() {
   sei();  
 }
 
-void loopbody() {
-  static uint8_t count = 0;
-  
+uint16_t loopbody() {
+  static uint8_t count = 0;  
   static uint8_t curIndex = 0;
   static uint8_t maxIndex = sizeof( circle ) / sizeof( QCRing );
+  
+  uint16_t required_delay_millis = 0; // How long to delay before calling me again.
 
-    if (gsUpdateFlag) return; // Do nothing if we can't update the greyscale values.
-    if( count == 0 )
-    {
-      _delay_ms(circle[curIndex].pattern_delay);
-      setupTargetColour( circle[curIndex] );
-      curIndex++;
-      if( curIndex >= maxIndex)
-      {
-        curIndex = 0;
-      }
+  // Do nothing if we can't update the greyscale values
+  if (gsUpdateFlag)
+    return;
+
+  // We split the fade into 256 steps, so what we do is setup targets,
+  // then spend 255 loop iterations executing the fade.
+  if (count == 0) {
+    setupTargetColour(circle[curIndex]); // Sets up all the targets
+    // Next LED settings:
+    curIndex++;
+    // Loop the animation:
+    if (curIndex >= maxIndex) {
+      curIndex = 0;
     }
-    fadeTo();
-    
-    TLC5940_SetGSUpdateFlag();
-    // usefully wraps at 255.
-    count++;
-    _delay_ms(circle[curIndex].step_delay);
+  }
+  fadeTo();
+  TLC5940_SetGSUpdateFlag(); // Need to change the lights
+  count++;
+  if (count==0) { // count overflowed
+    required_delay_millis += circle[curIndex].pattern_delay;
+  }
+  required_delay_millis += circle[curIndex].step_delay;
+  
+  // Return how long we should wait until this is called again.
+  return required_delay_millis;
 }
 
 int themain(void) {
