@@ -201,7 +201,6 @@
 
 // ---------- End TLC5940 Configuration Section ----------
 
-int themain(void);
 uint16_t loopbody();
 void startTLC();
 

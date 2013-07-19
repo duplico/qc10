@@ -5,7 +5,7 @@
 
 #include "tlc5940.h"
 
-#define FADE 1
+#define FADE 0
 
 #define O_RED 0
 #define O_ORG 1
@@ -24,9 +24,10 @@
 #define F_BLU 14
 #define L_SYS 15
 
+#define FADE_SCALE 8
 #define NUM_LEDS 16
-#define QCR_STEP 0
-#define QCR_DELAY 0
+#define QCR_STEP 5
+#define QCR_DELAY 5
 
 typedef struct tagQCRing {
   uint8_t o_red;
@@ -128,22 +129,22 @@ void setupTargetColour( QCRing target )
   QCRDest[F_BLU] = target.f_blu;
   QCRDest[L_SYS] = target.l_sys;
 
-  QCRInc[O_RED] = (QCRSource[O_RED] - QCRDest[O_RED]) / 256;
-  QCRInc[O_ORG] = (QCRSource[O_ORG] - QCRDest[O_ORG]) / 256;
-  QCRInc[O_YEL] = (QCRSource[O_YEL] - QCRDest[O_YEL]) / 256;
-  QCRInc[O_GRN] = (QCRSource[O_GRN] - QCRDest[O_GRN]) / 256;
-  QCRInc[O_BLU] = (QCRSource[O_BLU] - QCRDest[O_BLU]) / 256;
-  QCRInc[O_PNK] = (QCRSource[O_PNK] - QCRDest[O_PNK]) / 256;
-  QCRInc[I_RED] = (QCRSource[I_RED] - QCRDest[I_RED]) / 256;
-  QCRInc[I_ORG] = (QCRSource[I_ORG] - QCRDest[I_ORG]) / 256;
-  QCRInc[I_YEL] = (QCRSource[I_YEL] - QCRDest[I_YEL]) / 256;
-  QCRInc[I_GRN] = (QCRSource[I_GRN] - QCRDest[I_GRN]) / 256;
-  QCRInc[I_BLU] = (QCRSource[I_BLU] - QCRDest[I_BLU]) / 256;
-  QCRInc[I_PNK] = (QCRSource[I_PNK] - QCRDest[I_PNK]) / 256;
-  QCRInc[F_RED] = (QCRSource[F_RED] - QCRDest[F_RED]) / 256;
-  QCRInc[F_GRN] = (QCRSource[F_GRN] - QCRDest[F_GRN]) / 256;
-  QCRInc[F_BLU] = (QCRSource[F_BLU] - QCRDest[F_BLU]) / 256;
-  QCRInc[L_SYS] = (QCRSource[L_SYS] - QCRDest[L_SYS]) / 256;
+  QCRInc[O_RED] = (QCRSource[O_RED] - QCRDest[O_RED]) / (256 / FADE_SCALE);
+  QCRInc[O_ORG] = (QCRSource[O_ORG] - QCRDest[O_ORG]) / (256 / FADE_SCALE);
+  QCRInc[O_YEL] = (QCRSource[O_YEL] - QCRDest[O_YEL]) / (256 / FADE_SCALE);
+  QCRInc[O_GRN] = (QCRSource[O_GRN] - QCRDest[O_GRN]) / (256 / FADE_SCALE);
+  QCRInc[O_BLU] = (QCRSource[O_BLU] - QCRDest[O_BLU]) / (256 / FADE_SCALE);
+  QCRInc[O_PNK] = (QCRSource[O_PNK] - QCRDest[O_PNK]) / (256 / FADE_SCALE);
+  QCRInc[I_RED] = (QCRSource[I_RED] - QCRDest[I_RED]) / (256 / FADE_SCALE);
+  QCRInc[I_ORG] = (QCRSource[I_ORG] - QCRDest[I_ORG]) / (256 / FADE_SCALE);
+  QCRInc[I_YEL] = (QCRSource[I_YEL] - QCRDest[I_YEL]) / (256 / FADE_SCALE);
+  QCRInc[I_GRN] = (QCRSource[I_GRN] - QCRDest[I_GRN]) / (256 / FADE_SCALE);
+  QCRInc[I_BLU] = (QCRSource[I_BLU] - QCRDest[I_BLU]) / (256 / FADE_SCALE);
+  QCRInc[I_PNK] = (QCRSource[I_PNK] - QCRDest[I_PNK]) / (256 / FADE_SCALE);
+  QCRInc[F_RED] = (QCRSource[F_RED] - QCRDest[F_RED]) / (256 / FADE_SCALE);
+  QCRInc[F_GRN] = (QCRSource[F_GRN] - QCRDest[F_GRN]) / (256 / FADE_SCALE);
+  QCRInc[F_BLU] = (QCRSource[F_BLU] - QCRDest[F_BLU]) / (256 / FADE_SCALE);
+  QCRInc[L_SYS] = (QCRSource[L_SYS] - QCRDest[L_SYS]) / (256 / FADE_SCALE);
 }
 
 void fadeTo()
@@ -203,7 +204,7 @@ uint16_t loopbody() {
   }
   fadeTo();
   TLC5940_SetGSUpdateFlag(); // Need to change the lights
-  count++;
+  count+= FADE_SCALE;
   if (count==0) { // count overflowed
     required_delay_millis += circle[curIndex].pattern_delay;
   }
@@ -211,15 +212,5 @@ uint16_t loopbody() {
   
   // Return how long we should wait until this is called again.
   return required_delay_millis;
-}
-
-int themain(void) {
-
-  startTLC();
-
-  for (;;) {
-    loopbody();
-  }
-
-  return 0;
+//  return 0;
 }
