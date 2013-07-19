@@ -92,7 +92,7 @@
 //#define TLC5940_ENABLE_MULTIPLEXING 1
 
 // The following option only applies if TLC5940_ENABLE_MULTIPLEXING = 1
-#ifdef TLC5940_ENABLE_MULTIPLEXING
+#if TLC5940_ENABLE_MULTIPLEXING
 // Defines the number of rows to be multiplexed.
 // Note: Without writing a custom ISR, that can toggle pins from multiple PORT
 //       registers, the maximum number of rows that can be multiplexed is eight.
@@ -109,7 +109,7 @@
 //  1 = Use the USART in double-buffered MSPIM mode to communicate with the
 //      TLC5940 (faster, but requires the use of different hardware pins)
 // WARNING: Before you enable this option, you must wire the chip up differently!
-//#define TLC5940_USART_MSPIM 1
+#define TLC5940_USART_MSPIM 1
 
 // Defines the number of bits used to define a single PWM cycle. The default
 // is 12, but it may be lowered to achieve faster refreshes, at the expense
