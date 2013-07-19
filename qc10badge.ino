@@ -23,6 +23,8 @@
 #define CONFIG_STRUCT_VERSION 155
 #define BADGES_IN_SYSTEM 100
 
+#define USE_LEDS 0
+
 //EEPROM the learning state?
 #define LEARNING 1 // Whether to auto-negotiate my ID.
 
@@ -164,7 +166,9 @@ void setup () {
     Serial.begin(57600);
     Serial.println(57600);
 //    loadConfig();
+#if USE_LEDS
     startTLC();
+#endif
     last_time = millis();
     current_time = millis();
 }
@@ -193,17 +197,14 @@ void loop () {
   
   // Compute t using elapsed time since last iteration of this loop.
   current_time = millis();
-  Serial.println(current_time);
   t += (current_time - last_time);
   last_time = current_time;
+#if USE_LEDS
   if (current_time >= next_led_invocation) {
     next_led_invocation = loopbody() + current_time;
-    Serial.println(millis());
-    Serial.println(current_time);
-    Serial.print(" ");
-    Serial.println(next_led_invocation);
   }
-
+#endif
+  Serial.println("HI!");
 
   // Radio duty cycle.
   if (cycle_number != config.r_num_sleep_cycles && t < config.r_sleep_duration) {
