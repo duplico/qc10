@@ -1,10 +1,6 @@
 // Queercon 10 Badge Prototype
 /*****************************
  * This code is intended to be run on a JeeNode-compatible platform.
- * 
- *
- *
- *
  *
  * <http://www.queercon.org>
  */
@@ -23,7 +19,7 @@
 #define CONFIG_STRUCT_VERSION 156
 #define BADGES_IN_SYSTEM 100
 
-#define USE_LEDS 0
+#define USE_LEDS 1
 
 //EEPROM the learning state?
 #define LEARNING 1 // Whether to auto-negotiate my ID.
@@ -43,8 +39,6 @@ extern "C"
 // Running timer results for our busy-waiting loop.
 unsigned long last_time;
 unsigned long current_time;
-
-// TODO: "Sparse"ish array of badge groups and IDs I've seen?
 
 // Configuration settings struct, to be stored on the EEPROM.
 struct {
@@ -75,23 +69,23 @@ static word code2type(byte code) {
     return code == 4 ? RF12_433MHZ : code == 9 ? RF12_915MHZ : RF12_868MHZ;
 }
 
-// Print our current configuration to the serial console.
+// Print our current configuration to the //Serial console.
 static void showConfig() {
-    Serial.print("I am badge ");
-    Serial.println(config.badge_id);
-    Serial.print(' ');
-    Serial.print(code2freq(config.freq));
-    Serial.print(':');
-    Serial.print((int) config.rcv_group);
-    Serial.print(':');
-    Serial.print((int) config.rcv_id);
-    Serial.print(" -> ");
-    Serial.print(code2freq(config.freq));
-    Serial.print(':');
-    Serial.print((int) config.bcn_group);
-    Serial.print(':');
-    Serial.print((int) config.bcn_id);
-    Serial.println();
+    //Serial.print("I am badge ");
+    //Serial.println(config.badge_id);
+    //Serial.print(' ');
+    //Serial.print(code2freq(config.freq));
+    //Serial.print(':');
+    //Serial.print((int) config.rcv_group);
+    //Serial.print(':');
+    //Serial.print((int) config.rcv_id);
+    //Serial.print(" -> ");
+    //Serial.print(code2freq(config.freq));
+    //Serial.print(':');
+    //Serial.print((int) config.bcn_group);
+    //Serial.print(':');
+    //Serial.print((int) config.bcn_id);
+    //Serial.println();
 }
 
 // Load our configuration from EEPROM (also computing some payload).
@@ -163,8 +157,8 @@ static void saveBadge(uint16_t badge_id) {
 }
 
 void setup () {
-    Serial.begin(57600);
-    Serial.println(57600);
+    //Serial.begin(57600);
+    //Serial.println(57600);
     loadConfig();
 #if USE_LEDS
     startTLC();
@@ -201,7 +195,7 @@ void loop () {
   last_time = current_time;
 #if USE_LEDS
   if (current_time >= next_led_invocation) {
-    next_led_invocation = loopbody() + current_time;
+    next_led_invocation += loopbody();
   }
 #endif
 
@@ -211,13 +205,13 @@ void loop () {
     if (!badge_is_sleeping) {
       // Go to sleep if necessary, printing cycle information.
       rf12_sleep(0);
-      Serial.print("--|Cycle ");
-      Serial.print(cycle_number);
-      Serial.print("/");
-      Serial.print(config.r_num_sleep_cycles);
-      Serial.print(" t:");
-      Serial.println(t);
-      Serial.println("--|Sleeping radio.");
+      //Serial.print("--|Cycle ");
+      //Serial.print(cycle_number);
+      //Serial.print("/");
+      //Serial.print(config.r_num_sleep_cycles);
+      //Serial.print(" t:");
+      //Serial.println(t);
+      //Serial.println("--|Sleeping radio.");
       badge_is_sleeping = true;
     }
   }
@@ -226,13 +220,13 @@ void loop () {
     if (badge_is_sleeping) {
       // Wake up if necessary, printing cycle information.
       rf12_sleep(-1);
-      Serial.print("--|Cycle ");
-      Serial.print(cycle_number);
-      Serial.print("/");
-      Serial.print(config.r_num_sleep_cycles);
-      Serial.print(" t:");
-      Serial.println(t);
-      Serial.println("--|Waking radio.");
+      //Serial.print("--|Cycle ");
+      //Serial.print(cycle_number);
+      //Serial.print("/");
+      //Serial.print(config.r_num_sleep_cycles);
+      //Serial.print(" t:");
+      //Serial.println(t);
+      //Serial.println("--|Waking radio.");
       badge_is_sleeping = false;
     }
     // Radio listens
@@ -242,15 +236,15 @@ void loop () {
         if (rf12_len == sizeof in_payload) {      
             // TODO: confirm correct version.      
             // Print the metadata and badge ID of the beacon we've received.
-            Serial.print("<-|RCV OK ");
-            Serial.print(rf12_grp);
-            Serial.print("g ");
-            Serial.print(rf12_hdr);
-            Serial.print("hdr; beacon from ");
+            //Serial.print("<-|RCV OK ");
+            //Serial.print(rf12_grp);
+            //Serial.print("g ");
+            //Serial.print(rf12_hdr);
+            //Serial.print("hdr; beacon from ");
             in_payload = *(qcbpayload *)rf12_data;
-            Serial.print(in_payload.from_id);
-            Serial.print(" authority ");
-            Serial.println(in_payload.authority);
+            //Serial.print(in_payload.from_id);
+            //Serial.print(" authority ");
+            //Serial.println(in_payload.authority);
             // Increment our beacon count in the current position in our
             // sliding window.
             //received_numbers[receive_cycle]+=1;
@@ -260,8 +254,8 @@ void loop () {
                 // Increment our ID by one.
                 config.badge_id += 1;
                 saveConfig();
-                Serial.print("--|Duplicate ID detected. Incrementing mine to ");
-                Serial.println(config.badge_id);
+                //Serial.print("--|Duplicate ID detected. Incrementing mine to ");
+                //Serial.println(config.badge_id);
                 t_to_send = config.r_sleep_duration + (config.r_listen_wake_pad / 2) + 
                             ((config.r_listen_duration - config.r_listen_wake_pad) / config.badges_in_system) * config.badge_id;
                 // TODO: don't pick an ID that we've heard recently/before.
@@ -269,14 +263,14 @@ void loop () {
 
             lowest_badge_this_cycle = min(in_payload.from_id, lowest_badge_this_cycle);
             if (in_payload.authority < my_authority) {
-              Serial.print("|--Detected a higher authority ");
-              Serial.print(in_payload.authority);
-              Serial.print(" than my current ");
-              Serial.println(my_authority);
-              Serial.print("Alter clock cycle by ");
-              Serial.print((int)in_payload.cycle_number - (int)cycle_number);
-              Serial.print(" and t by ");
-              Serial.println((int)in_payload.timestamp - (int)t);
+              //Serial.print("|--Detected a higher authority ");
+              //Serial.print(in_payload.authority);
+              //Serial.print(" than my current ");
+              //Serial.println(my_authority);
+              //Serial.print("Alter clock cycle by ");
+              //Serial.print((int)in_payload.cycle_number - (int)cycle_number);
+              //Serial.print(" and t by ");
+              //Serial.println((int)in_payload.timestamp - (int)t);
               my_authority = in_payload.authority;
               cycle_number = in_payload.cycle_number;
               if (in_payload.timestamp < t_to_send) {
@@ -286,24 +280,22 @@ void loop () {
             }
           } else {
             // Wrong length.
-            Serial.println("Malformed packet received.");
+            //Serial.println("Malformed packet received.");
         }
     }
     if (!sent_this_cycle && t > t_to_send) {
       // Beacon.
-      Serial.println("--|BCN required.");
+      //Serial.println("--|BCN required.");
       out_payload.authority = my_authority;
       out_payload.cycle_number = cycle_number;
       out_payload.timestamp = t;
       if (rf12_canSend()) {
         sent_this_cycle = true;
         // Beacon.
-        Serial.print("->|BCN badge number ");
+        //Serial.print("->|BCN badge number ");
         rf12_sendStart(0, &out_payload, sizeof out_payload);
-        Serial.println(config.badge_id);
+        //Serial.println(config.badge_id);
       }
-      
-      
     }
   }
   else {
@@ -318,25 +310,4 @@ void loop () {
       cycle_number = 0;
     }
   }
-  
-  // TODO: do something if this badge is authoritative.
-  //       This badge is authoritative if my_authority = config.badge_id.
-  
-  /*
-    // Check the gaydar timer to see if it's time to compute an average count.
-    if (gaydarTimer.poll(gaydar_timer)) {
-        double avg_seen = 0; // Holds a sum, then an average.
-        for (int i=0; i<RECEIVE_WINDOW; i++) {
-            // Skip the window position we're currently accumulating,
-            // as it could be wrong (mid-cycle).
-            if (i != receive_cycle)
-                avg_seen += received_numbers[i];
-        }
-        // Compute the average (need window size - 1 because we skipped the
-        // current position).
-        avg_seen = avg_seen / (double)(RECEIVE_WINDOW - 1);
-        Serial.print("--|Badge count update: ");
-        Serial.println(avg_seen);
-    }
-    */
 }
