@@ -20,7 +20,7 @@
 #include <avr/eeprom.h>
 #include <avr/pgmspace.h>
 
-#define CONFIG_STRUCT_VERSION 155
+#define CONFIG_STRUCT_VERSION 156
 #define BADGES_IN_SYSTEM 100
 
 #define USE_LEDS 0
@@ -165,7 +165,7 @@ static void saveBadge(uint16_t badge_id) {
 void setup () {
     Serial.begin(57600);
     Serial.println(57600);
-//    loadConfig();
+    loadConfig();
 #if USE_LEDS
     startTLC();
 #endif
@@ -204,7 +204,6 @@ void loop () {
     next_led_invocation = loopbody() + current_time;
   }
 #endif
-  Serial.println("HI!");
 
   // Radio duty cycle.
   if (cycle_number != config.r_num_sleep_cycles && t < config.r_sleep_duration) {
@@ -312,7 +311,7 @@ void loop () {
     t = 0;
     cycle_number++;
     sent_this_cycle = false;
-    if (cycle_number > R_NUM_SLEEP_CYCLES) {
+    if (cycle_number > config.r_num_sleep_cycles) {
       // Time for a new interval
       my_authority = lowest_badge_this_cycle;
       lowest_badge_this_cycle = config.badge_id;
