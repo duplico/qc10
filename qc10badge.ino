@@ -24,8 +24,10 @@
 //EEPROM the learning state?
 #define LEARNING 1 // Whether to auto-negotiate my ID.
 
+
 extern "C"
 {
+  #include "animations.h"
   #include "tlc5940.h"
   #include "main.h"
 }
@@ -162,6 +164,8 @@ void setup () {
     loadConfig();
 #if USE_LEDS
     startTLC();
+//    set_system_lights_animation(0, 0);
+    set_ring_lights_animation(0, 0);
 #endif
     last_time = millis();
     current_time = millis();
@@ -205,7 +209,7 @@ void loop () {
     need_to_fade = true;
   }
   if (need_to_fade) {
-    fade_if_necessary();
+    fade_if_necessary(1);
   }
 #endif
 

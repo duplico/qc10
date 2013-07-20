@@ -4,8 +4,8 @@
 #include <util/delay.h>
 
 #include "tlc5940.h"
+#include "animations.h"
 
-#define FADE 0
 
 #define O_RED 0
 #define O_ORG 1
@@ -49,167 +49,27 @@
 #define QCR_STEP 3
 #define QCR_DELAY 5
 
-typedef struct tagQCLights {
-  uint8_t o_red;
-  uint8_t o_org;
-  uint8_t o_yel;
-  uint8_t o_grn;
-  uint8_t o_blu;
-  uint8_t o_pnk;
-
-  uint8_t i_red;
-  uint8_t i_org;
-  uint8_t i_yel;
-  uint8_t i_grn;
-  uint8_t i_blu;
-  uint8_t i_pnk;
-  
-  uint8_t f_red;
-  uint8_t f_grn;
-  uint8_t f_blu;
-  
-  uint8_t l_sys;
-  
-  uint16_t ring_delay;
-  uint16_t sys_delay;
-  
-} QCLights;
-
-typedef struct tagQCRing {
-  uint8_t o_red;
-  uint8_t o_org;
-  uint8_t o_yel;
-  uint8_t o_grn;
-  uint8_t o_blu;
-  uint8_t o_pnk;
-
-  uint8_t i_red;
-  uint8_t i_org;
-  uint8_t i_yel;
-  uint8_t i_grn;
-  uint8_t i_blu;
-  uint8_t i_pnk;
-  
-  uint16_t ring_delay;
-  
-} QCRing;
-
-typedef struct tagQCSys {
-  
-  uint8_t f_red;
-  uint8_t f_grn;
-  uint8_t f_blu;
-  
-  uint8_t l_sys;
-  
-  uint16_t sys_delay;
-  
-} QCSys;
-
 float QCRSource[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 float QCRDest[16];
 float QCRInc[16];
 
-uint8_t control_heartbeat = 0;
-uint8_t heartbeat_rate_scale = 16;
+///////////////////////////////////////////////
+/////////// if I knew how this stupid arduino /
+/////////// thing dealt with header files /////
+/////////// the below wouldn't be cluttering //
+/////////// up my code... /////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////
 
-QCSys heartbeat00[] = {
-  {64, 0, 0, 0, 200},
-  {0, 0, 0, 0, 200},
-  {64, 0, 0, 0, 200},
-  {0, 0, 0, 0, 3000},
-};
 
-QCSys heartbeat1[] = {
-  {64, 28, 0, 0, 200},
-  {0, 0, 0, 0, 200},
-  {64, 28, 0, 0, 200},
-  {0, 0, 0, 0, 1500},
-};
 
-QCSys heartbeat0[] = {
-  {64, 48, 0, 0, 200},
-  {0, 0, 0, 0, 200},
-  {64, 48, 0, 0, 200},
-  {0, 0, 0, 0, 1500},
-};
 
-#define HB 5
-QCSys heartbeats[][5] = {
-  {{64, 0, 0, 0, 200}, // Red, .2/3sec
-   {0, 0, 0, 0, 200},
-   {64, 0, 0, 0, 200},
-   {0, 0, 0, 0, 3000}},
-   
-  {{64, 28, 0, 0, 200}, // Orange, .2/1.5sec
-   {0, 0, 0, 0, 200},
-   {64, 28, 0, 0, 200},
-   {0, 0, 0, 0, 1500}},
-   
-  {{64, 48, 0, 0, 200}, // Yellow, .2/1.0sec
-   {0, 0, 0, 0, 200},
-   {64, 48, 0, 0, 200},
-   {0, 0, 0, 0, 1000}},
-   
-  {{0, 64, 0, 0, 150}, // Green, .15/0.8sec
-   {0, 0, 0, 0, 150},
-   {0, 64, 0, 0, 150},
-   {0, 0, 0, 0, 800}},
-   
-  {{0, 0, 64, 0, 150}, // Blue, .15/0.5sec
-   {0, 0, 0, 0, 150},
-   {0, 0, 64, 0, 150},
-   {0, 0, 0, 0, 500}},
-   
-  {{40, 0, 64, 0, 150}, // Violet, .125/0.4sec
-   {0, 0, 0, 0, 150},
-   {40, 0, 64, 0, 150},
-   {0, 0, 0, 0, 500}},
-   
-  {{64, 0, 36, 0, 100}, // Pink, .1/0.25sec
-   {0, 0, 0, 0, 100},
-   {64, 0, 36, 0, 100},
-   {0, 0, 0, 0, 250}},
-};
 
-QCRing circle[] = {
-  {128, 0, 0, 0, 0, 0,
-   128, 0, 0, 0, 0, 0,
-   QCR_DELAY},
-  {128, 128, 0, 0, 0, 0,
-   128, 128, 0, 0, 0, 0,
-   QCR_DELAY},
-  {128, 128, 128, 0, 0, 0,
-   128, 128, 128, 0, 0, 0,
-   QCR_DELAY},
-  {128, 128, 128, 128, 0, 0,
-   128, 128, 128, 128, 0, 0,
-   QCR_DELAY},
-  {128, 128, 128, 128, 128, 0,
-   128, 128, 128, 128, 128, 0,
-   QCR_DELAY},
-  {128, 128, 128, 128, 128, 128,
-   128, 128, 128, 128, 128, 128,
-   QCR_DELAY},
-  {0, 128, 128, 128, 128, 128,
-   0, 128, 128, 128, 128, 128,
-   QCR_DELAY},
-  {0, 0, 128, 128, 128, 128,
-   0, 0, 128, 128, 128, 128,
-   QCR_DELAY},
-  {0, 0, 0, 128, 128, 128,
-   0, 0, 0, 128, 128, 128,
-   QCR_DELAY},
-  {0, 0, 0, 0, 128, 128,
-   0, 0, 0, 0, 128, 128,
-   QCR_DELAY},
-  {0, 0, 0, 0, 0, 128,
-   0, 0, 0, 0, 0, 128,
-   QCR_DELAY},
-  {0, 0, 0, 0, 0, 0,
-   0, 0, 0, 0, 0, 0,
-   QCR_DELAY},
-};
+///////////////////////////////////////////////////////////////////////////////////////////
+/////////// if I knew how this stupid arduino /
+/////////// thing dealt with header files /////
+/////////// the above wouldn't be cluttering //
+/////////// up my code... /////////////////////
+///////////////////////////////////////////////
 
 void setupTargetRing(QCRing target) {
   QCRDest[O_RED] = target.o_red;
@@ -251,19 +111,20 @@ void setupTargetSys(QCSys target) {
   QCRInc[L_SYS] = (QCRSource[L_SYS] - QCRDest[L_SYS]) / (256 / FADE_SCALE);
 }
 
-void fadeTo()
+void fadeTo(uint8_t fade)
 {
   uint16_t i;
 
   for (i = 0; i < NUM_LEDS; i++) {
     TLC5940_SetGS(i, pgm_read_word(&TLC5940_GammaCorrect[(uint8_t)(QCRSource[i])]));
-    #if FADE
-    if (QCRSource[i] != QCRDest[i]) {
-      QCRSource[i] -= QCRInc[i];
+    if (fade) {
+      if (QCRSource[i] != QCRDest[i]) {
+        QCRSource[i] -= QCRInc[i];
+      }
     }
-    #else
-    QCRSource[i] = QCRDest[i];
-    #endif
+    else {
+      QCRSource[i] = QCRDest[i];
+    }
   }
 }
 
@@ -271,8 +132,8 @@ void startTLC() {
   TLC5940_Init();
 
 #if (TLC5940_INCLUDE_DC_FUNCS)
-//  TLC5940_SetAllDC(16);
-//  TLC5940_ClockInDC();
+  TLC5940_SetAllDC(7);
+  TLC5940_ClockInDC();
 #endif
 
   // Default all channels to off
@@ -287,72 +148,101 @@ void startTLC() {
 
 uint8_t need_to_fade = 0;
 
-uint16_t system_lights_update_loop() {
-  static uint8_t count = 0;  
-  static uint8_t curIndex = 0;
-  static uint8_t maxIndex = sizeof( heartbeats[HB] ) / sizeof( QCSys );
-  uint16_t required_delay_millis = 0; // How long to delay before calling me again.
+uint8_t led_sys_animation = 0;
+uint8_t led_sys_count = 0;
+uint8_t led_sys_animating = 0;
+uint8_t led_sys_looping = 1;
+uint8_t led_sys_cur_frame = 0;
+uint8_t led_sys_num_frames = 0;
 
-  // Do nothing if we can't update the greyscale values
-  if (gsUpdateFlag)
-    return 0;
+void set_system_lights_animation(uint8_t animation_number, uint8_t looping) {
+  led_sys_animation = animation_number;
+  led_sys_count = 0;  
+  led_sys_animating = 1;
+  led_sys_looping = looping;
+  led_sys_cur_frame = 0;
+  led_sys_num_frames = sizeof( heartbeats[led_sys_animation] ) / sizeof( QCSys );
+}
+
+uint16_t system_lights_update_loop() {
+  // If we aren't doing anything, don't do anything.
+  if (!led_sys_animating || gsUpdateFlag) return 0;
+  // TODO: consider returning a long wait if we're not animating.
+  
+  uint16_t required_delay_millis = 0; // How long to delay before calling me again.  
 
   // We split the fade into 256 steps, so what we do is setup targets,
   // then spend some iterations fading.
-  if (count == 0) {
-    required_delay_millis += heartbeats[HB][curIndex].sys_delay; // hold this frame
-    setupTargetSys(heartbeats[HB][curIndex]); // Sets up all the targets
+  if (led_sys_count == 0) {
+    required_delay_millis += heartbeats[led_sys_animation][led_sys_cur_frame].sys_delay; // hold this frame
+    setupTargetSys(heartbeats[led_sys_animation][led_sys_cur_frame]); // Sets up all the targets
     // Next frame in the pattern:
-    curIndex++;
+    led_sys_cur_frame++;
     // If we just finished the last one, loop.
-    if (curIndex >= maxIndex) {
-      curIndex = 0;
+    if (led_sys_cur_frame >= led_sys_num_frames) {
+      led_sys_cur_frame = 0;
+      if (!led_sys_looping) 
+        led_sys_animating = 0;
     }
   }
   need_to_fade = 1;
-  count+= FADE_SCALE;
+  led_sys_count += FADE_SCALE;
   required_delay_millis += QCR_STEP;
   
   // Return how long we should wait until this is called again.
   return required_delay_millis;  
+}
+
+uint8_t led_ring_animation = 0;
+uint8_t led_ring_count = 0;
+uint8_t led_ring_animating = 0;
+uint8_t led_ring_looping = 1;
+uint16_t led_ring_cur_frame = 0;
+uint16_t led_ring_num_frames = 0;
+
+void set_ring_lights_animation(uint8_t animation_number, uint8_t looping) {
+  led_ring_animation = animation_number;
+  led_ring_count = 0;  
+  led_ring_animating = 1;
+  led_ring_looping = looping;
+  led_ring_cur_frame = 0;
+//  led_ring_num_frames = sizeof( ring_animations[led_ring_animation] ) / sizeof( QCRing );
+  led_ring_num_frames = ring_anim_lengths[led_ring_animation];
 }
 
 uint16_t ring_lights_update_loop() {
-  static uint8_t count = 0;  
-  static uint8_t curIndex = 0;
-  static uint8_t maxIndex = sizeof( circle ) / sizeof( QCRing );
-  uint16_t required_delay_millis = 0; // How long to delay before calling me again.
-
-  // Do nothing if we can't update the greyscale values
-  if (gsUpdateFlag)
-    return 0;
+  // If we aren't doing anything, don't do anything.
+  if (!led_ring_animating || gsUpdateFlag) return 0;
+  // TODO: consider returning a long wait if we're not animating.
+  
+  uint16_t required_delay_millis = 0; // How long to delay before calling me again.  
 
   // We split the fade into 256 steps, so what we do is setup targets,
   // then spend some iterations fading.
-  if (count == 0) {
-    required_delay_millis += circle[curIndex].ring_delay; // hold this frame
-    setupTargetRing(circle[curIndex]); // Sets up all the targets
+  if (led_ring_count == 0) {
+    required_delay_millis += ring_animations[led_ring_animation][led_ring_cur_frame].ring_delay; // hold this frame
+    setupTargetRing(ring_animations[led_ring_animation][led_ring_cur_frame]); // Sets up all the targets
     // Next frame in the pattern:
-    curIndex++;
+    led_ring_cur_frame++;
     // If we just finished the last one, loop.
-    if (curIndex >= maxIndex) {
-      curIndex = 0;
+    if (led_ring_cur_frame > led_ring_num_frames) {
+      led_ring_cur_frame = 0;
+      if (!led_ring_looping) {
+        led_ring_animating = 0;
+      }
     }
   }
   need_to_fade = 1;
-  count+= FADE_SCALE;
+  led_ring_count += FADE_SCALE;
   required_delay_millis += QCR_STEP;
   
   // Return how long we should wait until this is called again.
   return required_delay_millis;  
 }
 
-void fade_if_necessary() { // TODO: boolean?
+void fade_if_necessary(uint8_t fade) {
   if (gsUpdateFlag || !need_to_fade) return;
-  fadeTo();
+  fadeTo(fade);
   TLC5940_SetGSUpdateFlag();
   need_to_fade = 0;
-}
-
-uint16_t loopbody() {
 }

@@ -201,10 +201,11 @@
 
 // ---------- End TLC5940 Configuration Section ----------
 
-uint16_t loopbody();
+void set_system_lights_animation(uint8_t, uint8_t);
+void set_ring_lights_animation(uint8_t, uint8_t);
 uint16_t system_lights_update_loop();
 uint16_t ring_lights_update_loop();
-void fade_if_necessary();
+void fade_if_necessary(uint8_t);
 void startTLC();
 
 #endif
