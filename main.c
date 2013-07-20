@@ -174,8 +174,8 @@ uint16_t system_lights_update_loop() {
   // We split the fade into 256 steps, so what we do is setup targets,
   // then spend some iterations fading.
   if (led_sys_count == 0) {
-    required_delay_millis += heartbeats[led_sys_animation][led_sys_cur_frame].sys_delay; // hold this frame
     setupTargetSys(heartbeats[led_sys_animation][led_sys_cur_frame]); // Sets up all the targets
+    required_delay_millis += heartbeats[led_sys_animation][led_sys_cur_frame].sys_delay; // hold this frame
     // Next frame in the pattern:
     led_sys_cur_frame++;
     // If we just finished the last one, loop.
