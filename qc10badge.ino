@@ -169,7 +169,8 @@ void setup () {
 
 void loop () {
   
-  static unsigned long next_led_invocation = 0;
+  static unsigned long led_next_ring = 0;
+  static unsigned long led_next_sys = 0;
   // millisecond clock in the current sleep cycle:
   static uint16_t t = 0;
   // number of the current sleep cycle:
@@ -194,8 +195,17 @@ void loop () {
   t += (current_time - last_time);
   last_time = current_time;
 #if USE_LEDS
-  if (current_time >= next_led_invocation) {
-    next_led_invocation += loopbody();
+  static boolean need_to_fade = false;
+  if (current_time >= led_next_ring) {
+    led_next_ring += ring_lights_update_loop();
+    need_to_fade = true;
+  }
+  if (current_time >= led_next_sys) {
+    led_next_sys += system_lights_update_loop();
+    need_to_fade = true;
+  }
+  if (need_to_fade) {
+    fade_if_necessary();
   }
 #endif
 

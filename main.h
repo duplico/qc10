@@ -202,6 +202,9 @@
 // ---------- End TLC5940 Configuration Section ----------
 
 uint16_t loopbody();
+uint16_t system_lights_update_loop();
+uint16_t ring_lights_update_loop();
+void fade_if_necessary();
 void startTLC();
 
 #endif
