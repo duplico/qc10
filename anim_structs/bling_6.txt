@@ -1,6 +1,5 @@
 // EFFECT: Ring light pairs toggle in/out while rotating counter-clockwise.
 #define QCR_DELAY 90
-
 #define BLING6LEN 14
 QCRing bling6[] = {
   {0, 0, 0, 0, 0, 0,

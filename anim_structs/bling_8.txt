@@ -1,6 +1,5 @@
 // EFFECT: Two-light backward spin.
 #define QCR_DELAY 90
-
 #define BLING8LEN 16
 QCRing bling8[] = {
   {0, 0, 0, 0, 0, 0,

@@ -1,6 +1,5 @@
 // EFFECT: Bouncing single LED
 #define QCR_DELAY 90
-
 #define BLING3LEN 14
 QCRing bling3[] = {
   {0, 0, 0, 0, 0, 0,

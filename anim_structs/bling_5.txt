@@ -1,6 +1,5 @@
 // EFFECT: Alternating opposite lights while spinning clockwise.
 #define QCR_DELAY 90
-
 #define BLING5LEN 16
 QCRing bling5[] = {
   {0, 0, 0, 0, 0, 0,

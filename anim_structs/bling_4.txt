@@ -1,6 +1,5 @@
 // EFFECT: Backwards rotation of color pairs, twice
 #define QCR_DELAY 90
-
 #define BLING2LEN 14
 QCRing bling4[] = {
   {0, 0, 0, 0, 0, 0,

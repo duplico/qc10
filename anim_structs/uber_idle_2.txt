@@ -1,6 +1,5 @@
 // REPEAT INDEFINITELY
 // EFFECT: Two color pairs rotate in sequence
-
 QCR_DELAY=90
 #define UBER2LEN 3
 QCRing uber2[] = {

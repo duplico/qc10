@@ -1,6 +1,5 @@
 // EFFECT: Bouncing color pairs.
 #define QCR_DELAY 90
-
 #define BLING2LEN 14
 QCRing bling2[] = {
   {0, 0, 0, 0, 0, 0,

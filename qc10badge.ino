@@ -164,7 +164,7 @@ void setup () {
     loadConfig();
 #if USE_LEDS
     startTLC();
-    set_system_lights_animation(2, 1);
+    set_system_lights_animation(3, 1);
 #endif
     last_time = millis();
     current_time = millis();
@@ -173,7 +173,7 @@ void setup () {
 uint16_t time_since_last_bling = 0;
 uint16_t seconds_between_blings = 8;
 uint8_t current_bling = 0;
-uint8_t num_blings = 5;
+uint8_t num_blings = 32;
 
 void loop () {
   

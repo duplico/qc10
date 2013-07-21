@@ -2,7 +2,7 @@
 // REPEAT INDEFINITELY
 QCR_DELAY=90
 #define UBER4LEN 2
-QCRing THINGNAME[] = {
+QCRing uber4[] = {
   {200, 200, 200, 200, 200, 200,
    32, 32, 32, 32, 32, 32,
    QCR_DELAY},

@@ -1,6 +1,5 @@
 // EFFECT: Alternating top/bottom fill, then side/side.
 #define QCR_DELAY 90
-
 #define BLING7LEN 14
 QCRing bling7[] = {
   {0, 0, 0, 0, 0, 0,

@@ -1,6 +1,5 @@
 // EFFECT: Outer spin then inner spin.
 #define QCR_DELAY 90
-
 #define BLING9LEN 15
 QCRing bling9[] = {
   {0, 0, 0, 0, 0, 0,
