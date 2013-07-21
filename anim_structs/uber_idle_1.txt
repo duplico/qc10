@@ -1,31 +1,24 @@
 // REPEAT INDEFINITELY
 // EFFECT: Single light bounce up and down on both sides
-QCR_DELAY=90;
-QCR_STEP = 0;
-
-var QCRing = [
-  [200, 32, 32, 200, 32, 32,
+QCR_DELAY=90
+#define UBER1LEN 6
+QCRing uber1[] = {
+  {200, 32, 32, 200, 32, 32,
    32, 32, 32, 32, 32, 32,
-   0, 0, 0, 0, QCR_STEP,
-   QCR_DELAY],
-  [32, 32, 32, 32, 32, 32,
+   QCR_DELAY},
+  {32, 32, 32, 32, 32, 32,
    200, 32, 200, 200, 32, 200,
-   0, 0, 0, 0, QCR_STEP,
-   QCR_DELAY],
-  [32, 200, 200, 32, 200, 200,
+   QCR_DELAY},
+  {32, 200, 200, 32, 200, 200,
    32, 32, 32, 32, 32, 32,
-   0, 0, 0, 0, QCR_STEP,
-   QCR_DELAY],
-  [32, 32, 32, 32, 32, 32,
+   QCR_DELAY},
+  {32, 32, 32, 32, 32, 32,
    32, 200, 32, 32, 200, 32,
-   0, 0, 0, 0, QCR_STEP,
-   QCR_DELAY],
-  [32, 200, 200, 32, 200, 200,
+   QCR_DELAY},
+  {32, 200, 200, 32, 200, 200,
    32, 32, 32, 32, 32, 32,
-   0, 0, 0, 0, QCR_STEP,
-   QCR_DELAY],
-  [32, 32, 32, 32, 32, 32,
+   QCR_DELAY},
+  {32, 32, 32, 32, 32, 32,
    200, 32, 200, 200, 32, 200,
-   0, 0, 0, 0, QCR_STEP,
-   QCR_DELAY]
-];
+   QCR_DELAY}
+};

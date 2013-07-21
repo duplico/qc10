@@ -44,7 +44,7 @@ QCSys heartbeats[][4] = {
 };
 
 
-#define QCR_DELAY 100
+#define QCR_DELAY 90
 QCRing bling1[] = {
   {0, 0, 0, 0, 0, 0,
    0, 0, 0, 0, 0, 0,

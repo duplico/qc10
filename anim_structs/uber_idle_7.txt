@@ -1,32 +1,25 @@
 // REPEAT INDEFINITELY
 // EFFECT: Left/right echo bounce
-QCR_DELAY=90;
-QCR_STEP = 0;
-
-var QCRing = [
-  [200, 32, 32, 200, 32, 32,
+QCR_DELAY=90
+#define UBER7LEN 6
+QCRing uber7[] = {
+  {200, 32, 32, 200, 32, 32,
    32, 32, 32, 32, 32, 32,
-   0, 0, 0, 0, QCR_STEP,
-   QCR_DELAY],
-  [32, 32, 32, 32, 32, 32,
+   QCR_DELAY},
+  {32, 32, 32, 32, 32, 32,
    200, 32, 200, 200, 32, 200,
-   0, 0, 0, 0, QCR_STEP,
-   QCR_DELAY],
-  [32, 32, 32, 32, 32, 32,
+   QCR_DELAY},
+  {32, 32, 32, 32, 32, 32,
    32, 200, 32, 32, 200, 32,
-   0, 0, 0, 0, QCR_STEP,
-   QCR_DELAY],
-  [32, 200, 200, 32, 200, 200,
+   QCR_DELAY},
+  {32, 200, 200, 32, 200, 200,
    32, 32, 32, 32, 32, 32,
-   0, 0, 0, 0, QCR_STEP,
-   QCR_DELAY],
-  [32, 32, 32, 32, 32, 32,
+   QCR_DELAY},
+  {32, 32, 32, 32, 32, 32,
    32, 200, 32, 32, 200, 32,
-   0, 0, 0, 0, QCR_STEP,
-   QCR_DELAY],
-  [32, 32, 32, 32, 32, 32,
+   QCR_DELAY},
+  {32, 32, 32, 32, 32, 32,
    200, 32, 200, 200, 32, 200,
-   0, 0, 0, 0, QCR_STEP,
-   QCR_DELAY],
+   QCR_DELAY},
 
-];
+};
