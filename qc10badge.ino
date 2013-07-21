@@ -23,7 +23,7 @@
 
 //EEPROM the learning state?
 #define LEARNING 1 // Whether to auto-negotiate my ID.
-
+#define DEFAULT_CROSSFADE_STEP 3
 
 extern "C"
 {
@@ -157,27 +157,31 @@ static void saveBadge(uint16_t badge_id) {
   int badge_address = (sizeof config) + badge_id;
   eeprom_write_byte((uint8_t *) badge_id, badges_seen[badge_id]);
 }
-
+#define CROSSFADING 1
 void setup () {
     //Serial.begin(57600);
     //Serial.println(57600);
     loadConfig();
 #if USE_LEDS
     startTLC();
-    set_system_lights_animation(3, 1);
+    set_system_lights_animation(3, 1, 2);
+//    set_ring_lights_animation(UBER_START_INDEX, 1, DEFAULT_CROSSFADE_STEP);
+    set_ring_lights_animation(BLING_START_INDEX, 1, CROSSFADING, DEFAULT_CROSSFADE_STEP,
+                              0, 0);
 #endif
     last_time = millis();
     current_time = millis();
 }
 
 uint16_t time_since_last_bling = 0;
-uint16_t seconds_between_blings = 8;
+uint16_t seconds_between_blings = 15;
 uint8_t current_bling = 0;
-uint8_t num_blings = 32;
+uint8_t num_blings = 10;
 
 void loop () {
   
   static unsigned long led_next_ring = 0;
+  static unsigned long led_next_uber_fade = 0;
   static unsigned long led_next_sys = 0;
   // millisecond clock in the current sleep cycle:
   static uint16_t t = 0;
@@ -203,19 +207,21 @@ void loop () {
   t += (current_time - last_time); 
 #if USE_LEDS
   time_since_last_bling += (current_time - last_time);
-  
+  /*
   if (time_since_last_bling > seconds_between_blings * 1000) {
-      set_ring_lights_animation(current_bling, 0);
-      current_bling = (current_bling + 1) % 5;
+      set_ring_lights_animation(current_bling, 1);
+      current_bling = (current_bling + 1) % num_blings;
       time_since_last_bling = 0;
-  }
+  }*/
 
   if (current_time >= led_next_ring) {
     led_next_ring = ring_lights_update_loop() + current_time;
-//    led_next_ring += ring_lights_update_loop();
+  }
+  // TODO: IF UBER
+  if (current_time >= led_next_uber_fade) {
+    led_next_uber_fade = uber_ring_fade() + current_time;
   }
   if (current_time >= led_next_sys) {
-//    led_next_sys += system_lights_update_loop();
     led_next_sys = system_lights_update_loop() + current_time;
   }
 #endif

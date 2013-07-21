@@ -60,3 +60,12 @@ typedef struct tagQCSys {
 extern QCRing *ring_animations[];
 extern uint8_t ring_anim_lengths[];
 extern QCSys heartbeats[][4];
+
+#define BLING_START_INDEX 0
+#define BLING_COUNT 10
+#define UBLING_START_INDEX 10
+#define UBLING_COUNT 10
+#define UBER_START_INDEX 20
+#define UBER_COUNT 10
+#define NEWBADGE_INDEX 30
+#define NEARBADGE_INDEX 31
