@@ -44,9 +44,9 @@
 #define L_SYS_DC 255
 
 // Fade scale of 8 and step of 2 = built-in 96ms delay for the optional cross-fade
-#define FADE_SCALE 8
+#define FADE_SCALE 4
 #define NUM_LEDS 16
-#define QCR_STEP 3
+#define QCR_STEP 2
 #define QCR_DELAY 5
 
 float QCRSource[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
