@@ -1,0 +1,54 @@
+<html>
+<head>
+<script type="text/javascript" src="new_badge.txt"></script>
+	<style>
+		.led {
+			position: absolute;
+			width: 14px;
+			height: 14px;
+		}
+		</style>
+<script>
+	<!--
+	function run_anim()
+	{
+		QCR_STEP = 100;
+		QCR_DELAY = 60;
+
+	  set_light_pattern(QCRing, QCR_DELAY,0);
+	}
+	
+	function set_light_pattern(QCRing, delay, curspot)
+	{
+		//window.alert("set state " + curspot + " after " + delay);
+   	for (y=0; y<12; y++)
+   	{
+   		if (QCRing[curspot][y] == 0)
+   	  	document.getElementById("led"+y).style.opacity=0;
+   	  else {
+   	  	opac_level = (QCRing[curspot][y]+32)/255;
+   	  	document.getElementById("led"+y).style.opacity=(opac_level);
+   	  }
+   	 }
+   	 curspot++;
+   	 if (curspot < QCRing.length)
+   	 	var t=setTimeout(function() { set_light_pattern(QCRing,delay,curspot); }, delay);
+  }
+	-->
+	</script>
+</head>
+<body style="background:url('badge_fingerprint2.png') no-repeat left top" onload="run_anim()">
+<div id="led0" class="led" style="background: #ff0000; top: 150px; left:160px;"> </div>
+<div id="led6" class="led" style="background: #ff0000; top: 180px; left:200px;"> </div>
+<div id="led1" class="led" style="background: #ff9c00; top: 200px; left:240px;"> </div>
+<div id="led7" class="led" style="background: #ff9c00; top: 240px; left:230px;"> </div>
+<div id="led2" class="led" style="background: #fffc00; top: 290px; left:240px;"> </div>
+<div id="led8" class="led" style="background: #fffc00; top: 310px; left:200px;"> </div>
+<div id="led3" class="led" style="background: #00ff00; top: 330px; left:160px;"> </div>
+<div id="led9" class="led" style="background: #00ff00; top: 310px; left:120px;"> </div>
+<div id="led4" class="led" style="background: #00ccff; top: 290px; left:80px;"> </div>
+<div id="led10" class="led" style="background: #00ccff; top: 240px; left:90px;"> </div>
+<div id="led5" class="led" style="background: #ff00ff; top: 200px; left:80px;"> </div>
+<div id="led11" class="led" style="background: #ff00ff; top: 180px; left:120px;"> </div>
+</body>
+</html>

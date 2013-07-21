@@ -1,0 +1,20 @@
+// REPEAT INDEFINITELY
+// EFFECT: Two color pairs rotate in sequence
+
+QCR_DELAY=90;
+QCR_STEP = 0;
+
+var QCRing = [
+  [200, 32, 32, 200, 32, 32,
+   200, 32, 32, 200, 32, 32,
+   0, 0, 0, 0, QCR_STEP,
+   QCR_DELAY],
+  [32, 32, 200, 32, 32, 200,
+   32, 32, 200, 32, 32, 200,
+   0, 0, 0, 0, QCR_STEP,
+   QCR_DELAY],
+  [32, 200, 32, 32, 200, 32,
+   32, 200, 32, 32, 200, 32,
+   0, 0, 0, 0, QCR_STEP,
+   QCR_DELAY]
+];
