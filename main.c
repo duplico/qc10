@@ -260,12 +260,3 @@ uint16_t ring_lights_update_loop() {
   // Return how long we should wait until this is called again.
   return required_delay_millis;  
 }
-
-void fade_if_necessary(uint8_t fade) {
-/*
-  if (gsUpdateFlag || !need_to_fade) return;
-  fadeTo(fade);
-  TLC5940_SetGSUpdateFlag();
-  need_to_fade = 0;
-  */
-}
