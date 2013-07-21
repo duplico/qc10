@@ -165,7 +165,7 @@ void setup () {
 #if USE_LEDS
     startTLC();
     set_system_lights_animation(2, 1);
-    set_ring_lights_animation(0, 0);
+    set_ring_lights_animation(0, 1);
 #endif
     last_time = millis();
     current_time = millis();

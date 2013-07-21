@@ -111,11 +111,28 @@ void setupTargetSys(QCSys target) {
   QCRInc[L_SYS] = (QCRSource[L_SYS] - QCRDest[L_SYS]) / (256 / FADE_SCALE);
 }
 
-void fadeTo(uint8_t fade)
+void sys_fade(uint8_t fade)
 {
   uint16_t i;
 
-  for (i = 0; i < NUM_LEDS; i++) {
+  for (i = 12; i < NUM_LEDS; i++) {
+    TLC5940_SetGS(i, pgm_read_word(&TLC5940_GammaCorrect[(uint8_t)(QCRSource[i])]));
+    if (fade) {
+      if (QCRSource[i] != QCRDest[i]) {
+        QCRSource[i] -= QCRInc[i];
+      }
+    }
+    else {
+      QCRSource[i] = QCRDest[i];
+    }
+  }
+}
+
+void ring_fade(uint8_t fade)
+{
+  uint16_t i;
+
+  for (i = 0; i < 12; i++) {
     TLC5940_SetGS(i, pgm_read_word(&TLC5940_GammaCorrect[(uint8_t)(QCRSource[i])]));
     if (fade) {
       if (QCRSource[i] != QCRDest[i]) {
@@ -185,7 +202,9 @@ uint16_t system_lights_update_loop() {
         led_sys_animating = 0;
     }
   }
-  need_to_fade = 1;
+//  need_to_fade = 1;
+  sys_fade(1);
+  TLC5940_SetGSUpdateFlag();
   led_sys_count += FADE_SCALE;
   required_delay_millis += QCR_STEP;
   
@@ -232,7 +251,9 @@ uint16_t ring_lights_update_loop() {
       }
     }
   }
-  need_to_fade = 1;
+//  need_to_fade = 1;
+  ring_fade(1);
+  TLC5940_SetGSUpdateFlag();
   led_ring_count += FADE_SCALE;
   required_delay_millis += QCR_STEP;
   
@@ -241,8 +262,10 @@ uint16_t ring_lights_update_loop() {
 }
 
 void fade_if_necessary(uint8_t fade) {
+/*
   if (gsUpdateFlag || !need_to_fade) return;
   fadeTo(fade);
   TLC5940_SetGSUpdateFlag();
   need_to_fade = 0;
+  */
 }
