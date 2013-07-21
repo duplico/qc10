@@ -165,11 +165,13 @@ void setup () {
 #if USE_LEDS
     startTLC();
     set_system_lights_animation(2, 1);
-    set_ring_lights_animation(0, 1);
 #endif
     last_time = millis();
     current_time = millis();
 }
+
+uint16_t time_since_last_bling = 0;
+uint16_t seconds_between_blings = 15;
 
 void loop () {
   
@@ -196,22 +198,25 @@ void loop () {
   
   // Compute t using elapsed time since last iteration of this loop.
   current_time = millis();
-  t += (current_time - last_time);
-  last_time = current_time;
+  t += (current_time - last_time); 
 #if USE_LEDS
-  static boolean need_to_fade = false;
+  time_since_last_bling += (current_time - last_time);
+  
+  if (time_since_last_bling > seconds_between_blings * 1000) {
+      set_ring_lights_animation(0, 0);
+      time_since_last_bling = 0;
+  }
+
   if (current_time >= led_next_ring) {
-    led_next_ring += ring_lights_update_loop();
-    need_to_fade = true;
+    led_next_ring = ring_lights_update_loop() + current_time;
+//    led_next_ring += ring_lights_update_loop();
   }
   if (current_time >= led_next_sys) {
-    led_next_sys += system_lights_update_loop();
-    need_to_fade = true;
-  }
-  if (need_to_fade) {
-    fade_if_necessary(1);
+//    led_next_sys += system_lights_update_loop();
+    led_next_sys = system_lights_update_loop() + current_time;
   }
 #endif
+  last_time = current_time;
 
   // Radio duty cycle.
   if (cycle_number != config.r_num_sleep_cycles && t < config.r_sleep_duration) {
