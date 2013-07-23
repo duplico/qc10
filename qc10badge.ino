@@ -23,6 +23,11 @@
 
 //EEPROM the learning state?
 #define LEARNING 1 // Whether to auto-negotiate my ID.
+
+#define RECEIVE_WINDOW 3 // How many beacon cycles to look at together.
+uint8_t neighbor_counts[RECEIVE_WINDOW] = {0};
+uint8_t window_position = 0;
+
 #define DEFAULT_CROSSFADE_STEP 2
 
 extern "C"
@@ -71,7 +76,6 @@ struct qcbpayload {
 byte badges_seen[BADGES_IN_SYSTEM];
 uint8_t total_badges_seen = 0;
 uint8_t uber_badges_seen = 0;
-byte neighbor_badges[BADGES_IN_SYSTEM] = {0}; // All zeros.
 
 // Convert our configuration frequency code to the actual frequency.
 static word code2freq(byte code) {
@@ -117,7 +121,7 @@ static void loadConfig() {
         config.rcv_id = 1;
         config.bcn_group = 0;
         config.bcn_id = 1;
-        config.badge_id = 0;
+        config.badge_id = 1;
         config.badges_in_system = BADGES_IN_SYSTEM;
         config.r_sleep_duration = R_SLEEP_DURATION;
         config.r_listen_duration = R_LISTEN_DURATION;
@@ -152,13 +156,8 @@ static boolean has_seen_badge(uint16_t badge_id) {
   return (badges_seen[badge_id] & 0b0000001);
 }
 
-static boolean can_see_badge(uint16_t badge_id) {
-  return (neighbor_badges[badge_id] & 0b0000001);
-}
-
 // Returns true if this is the first time we've seen the badge.
 static boolean just_saw_badge(uint16_t badge_id) {
-  neighbor_badges[badge_id] |= 0b00000001;
   boolean seen_before = has_seen_badge(badge_id);
   badges_seen[badge_id] |= 0b00000001;
   if (seen_before) {
@@ -168,7 +167,8 @@ static boolean just_saw_badge(uint16_t badge_id) {
     uber_badges_seen++;
   }
   total_badges_seen++;
-  // TODO: save badges_seen to EEPROM.
+  // TODO:
+  // saveBadge(badge_id);
   return true;
 }
 
@@ -191,6 +191,7 @@ static void saveConfig() {
 #define CROSSFADE_TRUE 1
 #define CROSSFADE_FALSE 0
 
+// TODO: actually call this
 static void saveBadge(uint16_t badge_id) {
   int badge_address = (sizeof config) + badge_id;
   eeprom_write_byte((uint8_t *) badge_id, badges_seen[badge_id]);
@@ -200,7 +201,7 @@ void setup () {
 #if !(USE_LEDS)
     Serial.begin(57600);
     Serial.println(57600);
-    randomSeet(analogRead(0));
+    randomSeed(analogRead(0));
 #endif
     loadConfig();
     last_time = millis();
@@ -216,7 +217,7 @@ void setup () {
 
 uint16_t time_new_animation_allowed = 0;
 uint16_t time_since_last_bling = 0;
-uint16_t seconds_between_blings = 10;
+uint16_t seconds_between_blings = 25;
 uint8_t current_bling = 0;
 uint8_t num_blings = 10;
 uint8_t shown_badgecount = 0;
@@ -233,6 +234,44 @@ uint8_t need_to_show_near_badge = 0;
 uint8_t need_to_show_new_badge = 0;
 uint8_t need_to_show_uber_count = 0;
 uint8_t need_to_show_badge_count = 0;
+
+uint8_t last_neighbor_count = 0;
+uint8_t neighbor_count = 0;
+
+void set_heartbeat(uint8_t target_sys) {
+  if (target_sys != current_sys) {
+    led_next_sys = set_system_lights_animation(target_sys, LOOP_TRUE, 0);
+    current_sys = target_sys;
+  }
+}
+
+void set_gaydar_state(uint16_t cur_neighbor_count, uint16_t last_neighbor_count) {
+  if (last_neighbor_count == 0 && cur_neighbor_count != 0) {
+    need_to_show_near_badge = 1;
+  }
+  if (cur_neighbor_count == 0) {
+    set_heartbeat(0);
+    seconds_between_blings = 25;
+  } else if (cur_neighbor_count == 1) {
+    set_heartbeat(1);
+    seconds_between_blings = 21;
+  } else if (cur_neighbor_count <= 3) {
+    set_heartbeat(2);
+    seconds_between_blings = 17;
+  } else if (cur_neighbor_count <= 8) {
+    set_heartbeat(3);
+    seconds_between_blings = 10;
+  } else if (cur_neighbor_count <= 15) {
+    set_heartbeat(4);
+    seconds_between_blings = 8;
+  } else if (cur_neighbor_count <= 23) {
+    set_heartbeat(5);
+    seconds_between_blings = 7;
+  } else {
+    set_heartbeat(6);
+    seconds_between_blings = 6;
+  }
+}
 
 void show_badge_count() {
   // 13 is all. 24 is none.
@@ -286,6 +325,7 @@ void loop () {
       led_next_ring = set_ring_lights_animation(NEARBADGE_INDEX, LOOP_FALSE, CROSSFADE_FALSE, 
                                                 DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
     }
+    
     if (!led_ring_animating && need_to_show_new_badge == 1) {
       idling = 0;
       need_to_show_new_badge = 2;
@@ -293,11 +333,13 @@ void loop () {
                                                 DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
       led_next_sys = set_system_lights_animation(SYSTEM_NEWBADGE_INDEX, LOOP_TRUE, 0);
     }
+    
     if (idling && !led_ring_animating && need_to_show_badge_count) {
       idling = 0;
       need_to_show_badge_count = 0;
       show_badge_count();
     }
+    
     if (idling && !led_ring_animating && need_to_show_uber_count) {
       idling = 0;
       need_to_show_uber_count = 0;
@@ -315,7 +357,6 @@ void loop () {
       time_since_last_bling = 0;
       idling = 0;
     }
-    
     
     if (!led_ring_animating && !idling) { 
       idling = 1;
@@ -380,7 +421,7 @@ void loop () {
   
 
   // Radio duty cycle.
-  if (cycle_number != config.r_num_sleep_cycles && t < config.r_sleep_duration) {
+  if (cycle_number != 0 && t < config.r_sleep_duration) {
     // Radio sleeps unless we're in the last sleep cycle of an interval
     if (!badge_is_sleeping) {
       // Go to sleep if necessary, printing cycle information.
@@ -419,6 +460,7 @@ void loop () {
         // We've received something. Is it valid?
         if (rf12_len == sizeof in_payload) {      
             // TODO: confirm correct version.      
+            in_payload = *(qcbpayload *)rf12_data;
 #if !(USE_LEDS)
             // Print the metadata and badge ID of the beacon we've received.
             Serial.print("<-|RCV OK ");
@@ -426,11 +468,18 @@ void loop () {
             Serial.print("g ");
             Serial.print(rf12_hdr);
             Serial.print("hdr; beacon from ");
+            Serial.println(in_payload.from_id);
 #endif
-            in_payload = *(qcbpayload *)rf12_data;
             // Increment our beacon count in the current position in our
             // sliding window.
-            //received_numbers[receive_cycle]+=1;
+            neighbor_counts[window_position]+=1;
+#if USE_LEDS
+            // See if this is a new friend:
+            if (just_saw_badge(in_payload.from_id)) {
+              need_to_show_new_badge = 1;
+            }
+#endif
+#if LEARNING
             // If we're in ID learning mode, and we've heard an ID that we
             // thought was supposed to be us:
             if (LEARNING && in_payload.from_id == config.badge_id) {
@@ -443,8 +492,10 @@ void loop () {
 #endif
                 t_to_send = config.r_sleep_duration + (config.r_listen_wake_pad / 2) + 
                             ((config.r_listen_duration - config.r_listen_wake_pad) / config.badges_in_system) * config.badge_id;
+                my_authority = config.badge_id;
                 // TODO: don't pick an ID that we've heard recently/before.
             }
+#endif
 
             lowest_badge_this_cycle = min(in_payload.from_id, lowest_badge_this_cycle);
             if (in_payload.authority < my_authority) {
@@ -484,7 +535,7 @@ void loop () {
         sent_this_cycle = true;
         // Beacon.
 #if !(USE_LEDS)
-        Serial.print("->|BCN my number ");
+        Serial.println("->|BCN my number ");
 #endif
         rf12_sendStart(0, &out_payload, sizeof out_payload);
       }
@@ -493,6 +544,23 @@ void loop () {
   else {
     // Time for a new sleep cycle
     t = 0;
+    last_neighbor_count = neighbor_count;
+    neighbor_count = 0;
+    for (int i=0; i<RECEIVE_WINDOW; i++) {
+      if (i != window_position && neighbor_counts[i] > neighbor_count) {
+        neighbor_count = neighbor_counts[i];
+      }
+    }
+    window_position = (window_position + 1) % RECEIVE_WINDOW;
+    neighbor_counts[window_position] = 0;
+#if USE_LEDS
+    set_gaydar_state(neighbor_count, last_neighbor_count);
+#else
+    Serial.print("--|Update: ");
+    Serial.print(neighbor_count);
+    Serial.print(" neighbors, previously ");
+    Serial.println(last_neighbor_count);
+#endif
     cycle_number++;
     sent_this_cycle = false;
     if (cycle_number > config.r_num_sleep_cycles) {
