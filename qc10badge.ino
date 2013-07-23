@@ -191,7 +191,6 @@ static void saveConfig() {
 #define CROSSFADE_TRUE 1
 #define CROSSFADE_FALSE 0
 
-// TODO: actually call this
 static void saveBadge(uint16_t badge_id) {
   int badge_address = (sizeof config) + badge_id;
   eeprom_write_byte((uint8_t *) badge_id, badges_seen[badge_id]);
@@ -208,7 +207,7 @@ void setup () {
     current_time = millis();
 #if USE_LEDS
     startTLC();
-    set_system_lights_animation(SYSTEM_PREBOOT_INDEX, LOOP_TRUE, DEFAULT_CROSSFADE_STEP);
+    set_system_lights_animation(SYSTEM_PREBOOT_INDEX, LOOP_TRUE, 0);
     if (1) { // uber
       set_ring_lights_animation(SUPERUBER_INDEX, LOOP_FALSE, CROSSFADING, DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
     }
@@ -240,7 +239,9 @@ uint8_t neighbor_count = 0;
 
 void set_heartbeat(uint8_t target_sys) {
   if (target_sys != current_sys) {
-    led_next_sys = set_system_lights_animation(target_sys, LOOP_TRUE, 0);
+    if (need_to_show_new_badge == 0) {
+      led_next_sys = set_system_lights_animation(target_sys, LOOP_TRUE, 0);
+    }
     current_sys = target_sys;
   }
 }
@@ -381,13 +382,13 @@ void loop () {
     }
   }
   
-  if (current_time >= led_next_ring) {
+  if (led_ring_animating && current_time >= led_next_ring) {
     led_next_ring = ring_lights_update_loop() + current_time;
   }
   if (current_time >= led_next_uber_fade) {
     led_next_uber_fade = uber_ring_fade() + current_time;
   }
-  if (current_time >= led_next_sys) {
+  if (led_sys_animating && current_time >= led_next_sys) {
     led_next_sys = system_lights_update_loop() + current_time;
   }
   
@@ -459,7 +460,8 @@ void loop () {
     if (rf12_recvDone() && rf12_crc == 0) {
         // We've received something. Is it valid?
         if (rf12_len == sizeof in_payload) {      
-            // TODO: confirm correct version.      
+            // TODO: confirm correct version.
+            // TODO: bounds checking
             in_payload = *(qcbpayload *)rf12_data;
 #if !(USE_LEDS)
             // Print the metadata and badge ID of the beacon we've received.
@@ -493,7 +495,6 @@ void loop () {
                 t_to_send = config.r_sleep_duration + (config.r_listen_wake_pad / 2) + 
                             ((config.r_listen_duration - config.r_listen_wake_pad) / config.badges_in_system) * config.badge_id;
                 my_authority = config.badge_id;
-                // TODO: don't pick an ID that we've heard recently/before.
             }
 #endif
 

@@ -209,5 +209,6 @@ uint16_t ring_lights_update_loop();
 uint16_t uber_ring_fade();
 void startTLC();
 extern uint8_t led_ring_animating;
+extern uint8_t led_sys_animating;
 
 #endif

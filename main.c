@@ -151,7 +151,6 @@ uint8_t set_system_lights_animation(uint8_t animation_number, uint8_t looping, u
 uint16_t system_lights_update_loop() {
   // If we aren't doing anything, don't do anything.
   if (!led_sys_animating || gsUpdateFlag) return 0;
-  // TODO: consider returning a long wait if we're not animating.
   
   uint16_t required_delay_millis = 0; // How long to delay before calling me again.  
   if (led_sys_count == 256 - FADE_SCALE) {
@@ -170,8 +169,7 @@ uint16_t system_lights_update_loop() {
     }
     setupTargetSys(heartbeats[led_sys_animation][led_sys_cur_frame]); // Sets up all the targets
   }
-  // TODO
-  sys_fade(0);
+  sys_fade(led_sys_crossfade_step != 0);
   TLC5940_SetGSUpdateFlag();
   led_sys_count += FADE_SCALE;
   required_delay_millis += led_sys_crossfade_step;
@@ -263,11 +261,10 @@ void ring_stop_animating() {
 uint16_t ring_lights_update_loop() {
   // If we aren't doing anything, don't do anything.
   if (!led_ring_animating || gsUpdateFlag) return 0;
-  // TODO: consider returning a long wait if we're not animating.
   
   uint16_t required_delay_millis = 0; // How long to delay before calling me again.
   
-  if (led_ring_count == 256 - FADE_SCALE || !led_ring_crossfade) { // TODO
+  if (led_ring_count == 256 - FADE_SCALE || !led_ring_crossfade) {
     required_delay_millis += current_ring.ring_delay; // hold this frame
   }
   // We split the fade into 256 steps, so what we do is setup targets,

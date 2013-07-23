@@ -20,7 +20,7 @@ QCSys heartbeats[][4] = {
    {0, 0, 0, 0, 5000}},
    
   {{33, 14, 0, 0, 100}, // Orange, .2/2.0sec
-   {0, 0, 0, 0, 100}, // TODO: DOESN'T LOOK ORANGE.
+   {0, 0, 0, 0, 100},
    {33, 14, 0, 0, 100},
    {0, 0, 0, 0, 2000}},
    
@@ -1097,7 +1097,6 @@ QCRing ubling9[] PROGMEM = {
 }; //ubling9
 
 // EFFECT: All on, delay, then twinkle out.
-// TODO
 #define QCR_DELAY 90
 #define UBLING10LEN 18
 QCRing ubling10[] PROGMEM = {
@@ -1871,7 +1870,6 @@ QCRing newbadge[] PROGMEM = {
 
 // EFFECT: Two light pairs spinning many times.
 // NOTENOTE: I call out a repeat 12 times; either programmatically, or copy/paste that section.
-// TODO: make sure that we don't crossfade here.
 #define QCR_DELAY 60
 #define NEARBADGELEN 88
 QCRing nearbadge[] PROGMEM = {
