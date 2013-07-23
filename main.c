@@ -141,7 +141,7 @@ void set_system_lights_animation(uint8_t animation_number, uint8_t looping, uint
   led_sys_count = 0;  
   led_sys_animating = 1;
   led_sys_looping = looping;
-  led_sys_cur_frame = 0;
+  led_sys_cur_frame = -1; //255? // Make it overflow first thing.
   led_sys_crossfade_step = crossfade_step;
   led_sys_num_frames = sizeof( heartbeats[led_sys_animation] ) / sizeof( QCSys );
 }
@@ -152,12 +152,12 @@ uint16_t system_lights_update_loop() {
   // TODO: consider returning a long wait if we're not animating.
   
   uint16_t required_delay_millis = 0; // How long to delay before calling me again.  
-
+  if (led_sys_count == 256 - FADE_SCALE) {
+    required_delay_millis += heartbeats[led_sys_animation][led_sys_cur_frame].sys_delay; // hold this frame
+  }
   // We split the fade into 256 steps, so what we do is setup targets,
   // then spend some iterations fading.
   if (led_sys_count == 0) {
-    setupTargetSys(heartbeats[led_sys_animation][led_sys_cur_frame]); // Sets up all the targets
-    required_delay_millis += heartbeats[led_sys_animation][led_sys_cur_frame].sys_delay; // hold this frame
     // Next frame in the pattern:
     led_sys_cur_frame++;
     // If we just finished the last one, loop.
@@ -166,8 +166,10 @@ uint16_t system_lights_update_loop() {
       if (!led_sys_looping) 
         led_sys_animating = 0;
     }
+    setupTargetSys(heartbeats[led_sys_animation][led_sys_cur_frame]); // Sets up all the targets
   }
-  sys_fade(1);
+  // TODO
+  sys_fade(0);
   TLC5940_SetGSUpdateFlag();
   led_sys_count += FADE_SCALE;
   required_delay_millis += led_sys_crossfade_step;
@@ -193,6 +195,7 @@ void ring_fade(uint8_t fade) {
     if (led_ring_uberfade && QCRDest[i] == 0)
       continue; // If we're uber, skip lights that we're turning off.
     TLC5940_SetGS(i, pgm_read_word(&TLC5940_GammaCorrect[(uint8_t)(QCRSource[i])]));
+    TLC5940_SetGSUpdateFlag();
     if (fade) {
       if (QCRSource[i] != QCRDest[i]) {
         QCRSource[i] -= QCRInc[i];
@@ -208,8 +211,9 @@ uint16_t uber_ring_fade() {
   if (!led_ring_uberfade) return 1000;
   uint16_t i, j;
   for (i = 0; i < L_SYS; i++) {
-    if (QCRDest[i] == 0) {
+    if (QCRDest[i] == 0 || !led_ring_animating) {
       TLC5940_SetGS(i, pgm_read_word(&TLC5940_GammaCorrect[(uint8_t)(QCRSource[i])]));
+      TLC5940_SetGSUpdateFlag();
       if (QCRSource[i] != QCRDest[i]) {
         QCRSource[i] -= UBER_FADEOUT_INC;
         if (QCRSource[i] < 0) QCRSource[i] = 0;
@@ -219,11 +223,10 @@ uint16_t uber_ring_fade() {
   return led_ring_crossfade_step;
 }
 
-// TODO: accept parameters for fade, and number of frames
 void set_ring_lights_animation(uint8_t animation_number, uint8_t looping, uint8_t crossfade,
                                uint8_t crossfade_step, uint8_t num_frames, uint8_t uberfade) {
   led_ring_animation = animation_number;
-  led_ring_count = 0;  
+  led_ring_count = 0;
   led_ring_animating = 1;
   led_ring_looping = looping;
   led_ring_cur_frame = 0;
@@ -241,35 +244,36 @@ void ring_stop_animating() {
   led_ring_animating = 0;
 }
 
-
 uint16_t ring_lights_update_loop() {
   // If we aren't doing anything, don't do anything.
   if (!led_ring_animating || gsUpdateFlag) return 0;
   // TODO: consider returning a long wait if we're not animating.
   
-  uint16_t required_delay_millis = 0; // How long to delay before calling me again.  
-
+  uint16_t required_delay_millis = 0; // How long to delay before calling me again.
+  
+  if (led_ring_count == 256 - FADE_SCALE || !led_ring_crossfade) { // TODO
+    required_delay_millis += current_ring.ring_delay; // hold this frame
+  }
   // We split the fade into 256 steps, so what we do is setup targets,
   // then spend some iterations fading.
-  if (led_ring_count == 0) {
-    required_delay_millis += current_ring.ring_delay; // hold this frame
+  if (led_ring_count == 0 || !led_ring_crossfade) {
+    memcpy_P(&current_ring, &ring_animations[led_ring_animation][led_ring_cur_frame], sizeof(QCRing));
     setupTargetRing(current_ring); // Sets up all the targets
     // Next frame in the pattern:
     led_ring_cur_frame++;
     // If we just finished the last one, loop.
-    if (led_ring_cur_frame > led_ring_num_frames) {
+    if (led_ring_cur_frame == led_ring_num_frames) {
       led_ring_cur_frame = 0;
       if (!led_ring_looping) {
         led_ring_animating = 0;
       }
     }
-    memcpy_P(&current_ring, &ring_animations[led_ring_animation][led_ring_cur_frame], sizeof(QCRing));
   }
-  ring_fade(1);
-  TLC5940_SetGSUpdateFlag();
+  ring_fade(led_ring_crossfade);
   led_ring_count += FADE_SCALE;
-  required_delay_millis += led_ring_crossfade_step;
-  
+  if (led_ring_crossfade) {
+    required_delay_millis += led_ring_crossfade_step;
+  }
   // Return how long we should wait until this is called again.
   return required_delay_millis;  
 }
