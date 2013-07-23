@@ -194,7 +194,7 @@ void setup () {
     startTLC();
     set_system_lights_animation(SYSTEM_PREBOOT_INDEX, LOOP_TRUE, DEFAULT_CROSSFADE_STEP);
     if (1) { // uber
-      set_ring_lights_animation(SUPERUBER_INDEX, LOOP_FALSE, CROSSFADING, DEFAULT_CROSSFADE_STEP, 0, 0);
+      set_ring_lights_animation(SUPERUBER_INDEX, LOOP_FALSE, CROSSFADING, DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
     }
 #endif
 }
@@ -208,7 +208,7 @@ uint8_t shown_badgecount = 0;
 uint8_t shown_ubercount = 0;
 uint8_t in_preboot = 1;
 uint8_t current_sys = 0;
-uint8_t current_uber = 4;
+uint8_t current_uber = 3;
 unsigned long led_next_ring = 0;
 unsigned long led_next_uber_fade = 0;
 unsigned long led_next_sys = 0;
@@ -220,16 +220,14 @@ void show_badge_count() {
   if (end_index < 13)
     end_index = 13;
 
-  set_ring_lights_animation(BADGECOUNT_INDEX, LOOP_FALSE, CROSSFADING, DEFAULT_CROSSFADE_STEP,
-                              end_index, 0);
-  led_next_ring = 0;
+  led_next_ring = set_ring_lights_animation(BADGECOUNT_INDEX, LOOP_FALSE, CROSSFADING, DEFAULT_CROSSFADE_STEP,
+                                            end_index, UBERFADE_FALSE);
   time_new_animation_allowed = current_time + 5000;
 }
 
 void show_uber_count() {
-  set_ring_lights_animation(UBERCOUNT_INDEX, LOOP_FALSE, CROSSFADING, DEFAULT_CROSSFADE_STEP,
-                              0, 0);
-  led_next_ring = 0;
+  led_next_ring = set_ring_lights_animation(UBERCOUNT_INDEX, LOOP_FALSE, CROSSFADING, DEFAULT_CROSSFADE_STEP,
+                                            0, UBERFADE_FALSE);
   time_new_animation_allowed = current_time + 5000;
 }
 
@@ -259,19 +257,19 @@ void loop () {
   if (!in_preboot) {
     time_since_last_bling += elapsed_time;
     if (time_since_last_bling > seconds_between_blings * 1000) {
-//        set_ring_lights_animation(UBLING_START_INDEX + current_bling, LOOP_FALSE, CROSSFADING, 
-//                                  DEFAULT_CROSSFADE_STEP, 0, 0);//(config.badge_id<=10)); // TODO
-        set_ring_lights_animation(NEWBADGE_INDEX, LOOP_FALSE, 0, 
-                          DEFAULT_CROSSFADE_STEP, 0, 0);//(config.badge_id<=10)); // TODO
-        current_bling = (current_bling + 1) % (UBLING_COUNT);
+        led_next_ring = set_ring_lights_animation(BLING_START_INDEX + current_bling, LOOP_FALSE, CROSSFADING, 
+                                                  DEFAULT_CROSSFADE_STEP, 0, UBERFADE_TRUE);//(config.badge_id<=10)); // TODO
+//        led_next_ring = set_ring_lights_animation(NEARBADGE_INDEX, LOOP_FALSE, 0, DEFAULT_CROSSFADE_STEP, 0, 0);
+//        led_next_sys = set_system_lights_animation(SYSTEM_NEWBADGE_INDEX, LOOP_TRUE, 0);
+        current_bling = (current_bling + 1) % (BLING_COUNT + UBLING_COUNT);
         time_since_last_bling = 0;
-        set_system_lights_animation(current_sys, LOOP_TRUE, 0);
         current_sys = (current_sys + 1) % 7;
         idling = 0;
     }
     if (!led_ring_animating && !idling) {
-      set_ring_lights_animation(UBER_START_INDEX + current_uber, LOOP_TRUE, CROSSFADING, 
-                                    DEFAULT_CROSSFADE_STEP, 0, 0);
+      led_next_ring = set_ring_lights_animation(UBER_START_INDEX + current_uber, LOOP_TRUE, CROSSFADING, 
+                                                DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
+      led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
       idling = 1;
     }
   }

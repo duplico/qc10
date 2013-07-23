@@ -201,8 +201,8 @@
 
 // ---------- End TLC5940 Configuration Section ----------
 
-void set_system_lights_animation(uint8_t, uint8_t, uint8_t);
-void set_ring_lights_animation(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
+uint8_t set_system_lights_animation(uint8_t, uint8_t, uint8_t);
+uint8_t set_ring_lights_animation(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
 void ring_stop_animating();
 uint16_t system_lights_update_loop();
 uint16_t ring_lights_update_loop();

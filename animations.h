@@ -74,3 +74,4 @@ extern QCSys heartbeats[][4];
 #define UBERCOUNT_INDEX 34
 
 #define SYSTEM_PREBOOT_INDEX 7
+#define SYSTEM_NEWBADGE_INDEX 8

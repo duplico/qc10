@@ -51,7 +51,8 @@ float QCRSource[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 float QCRDest[16];
 float QCRInc[16];
 
-#define UBER_FADEOUT_INC 0.2 * FADE_SCALE
+#define UBER_FADEOUT_INC 0.1 * FADE_SCALE
+#define UBER_FADEOUT_DELAY 3
 
 void setupTargetRing(QCRing target) {
   QCRDest[O_RED] = target.o_red;
@@ -136,7 +137,7 @@ void sys_fade(uint8_t fade)
   }
 }
 
-void set_system_lights_animation(uint8_t animation_number, uint8_t looping, uint8_t crossfade_step) {
+uint8_t set_system_lights_animation(uint8_t animation_number, uint8_t looping, uint8_t crossfade_step) {
   led_sys_animation = animation_number;
   led_sys_count = 0;  
   led_sys_animating = 1;
@@ -144,6 +145,7 @@ void set_system_lights_animation(uint8_t animation_number, uint8_t looping, uint
   led_sys_cur_frame = -1; //255? // Make it overflow first thing.
   led_sys_crossfade_step = crossfade_step;
   led_sys_num_frames = sizeof( heartbeats[led_sys_animation] ) / sizeof( QCSys );
+  return 0;
 }
 
 uint16_t system_lights_update_loop() {
@@ -220,10 +222,10 @@ uint16_t uber_ring_fade() {
       }
     }
   }
-  return led_ring_crossfade_step;
+  return UBER_FADEOUT_DELAY;
 }
 
-void set_ring_lights_animation(uint8_t animation_number, uint8_t looping, uint8_t crossfade,
+uint8_t set_ring_lights_animation(uint8_t animation_number, uint8_t looping, uint8_t crossfade,
                                uint8_t crossfade_step, uint8_t num_frames, uint8_t uberfade) {
   led_ring_animation = animation_number;
   led_ring_count = 0;
@@ -238,6 +240,7 @@ void set_ring_lights_animation(uint8_t animation_number, uint8_t looping, uint8_
   else
     led_ring_num_frames = num_frames;
   led_ring_uberfade = uberfade;
+  return 0;
 }
 
 void ring_stop_animating() {
