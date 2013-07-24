@@ -16,20 +16,6 @@
 #include <avr/eeprom.h>
 #include <avr/pgmspace.h>
 
-#define CONFIG_STRUCT_VERSION 156
-#define BADGES_IN_SYSTEM 120
-
-#define USE_LEDS 1
-
-//EEPROM the learning state?
-#define LEARNING 1 // Whether to auto-negotiate my ID.
-
-#define RECEIVE_WINDOW 3 // How many beacon cycles to look at together.
-uint8_t neighbor_counts[RECEIVE_WINDOW] = {0};
-uint8_t window_position = 0;
-
-#define DEFAULT_CROSSFADE_STEP 2
-
 extern "C"
 {
   #include "animations.h"
@@ -37,25 +23,78 @@ extern "C"
   #include "main.h"
 }
 
+// General (overall system) configuration
+#define UBER_COUNT 10
+#define CONFIG_STRUCT_VERSION 156
+#define BADGES_IN_SYSTEM 120
+#define BADGE_METER_INTERVAL 6
+#define BADGE_FRIENDLY_CUTOFF 60
+
+// Radio Configuration
+#define LEARNING 1 // Whether to auto-negotiate my ID. // TODO: EEPROM?
+#define RECEIVE_WINDOW 3 // How many beacon cycles to look at together.
 // NB: It's nice if the listen duration is divisible by BADGES_IN_SYSTEM 
 #define R_SLEEP_DURATION 5000
 #define R_LISTEN_DURATION 5000
 #define R_LISTEN_WAKE_PAD 1000
 #define R_NUM_SLEEP_CYCLES 6
 
-#define UBER_COUNT 10
+// LED configuration
+#define USE_LEDS 1
+#define DEFAULT_CROSSFADE_STEP 2
+#define PREBOOT_INTERVAL 20000
+#define PREBOOT_SHOW_COUNT_AT 2000
+#define PREBOOT_SHOW_UBERCOUNT_AT 12500
+#define CROSSFADING 1
 
-// Running timer results for our busy-waiting loop.
+// Convenience macros
+#define AM_UBER (uber_badges_seen >= UBER_COUNT)
+#define AM_SUPERUBER (config.badge_id < UBER_COUNT)
+#define AM_FRIENDLY (total_badges_seen > BADGE_FRIENDLY_CUTOFF)
+
+#define LOOP_TRUE 1
+#define LOOP_FALSE 0
+
+#define UBERFADE_TRUE 1
+#define UBERFADE_FALSE 0
+
+#define CROSSFADE_TRUE 1
+#define CROSSFADE_FALSE 0
+
+// Look at all my global state!!!
+// Timing
 unsigned long last_time;
 unsigned long current_time;
 unsigned long elapsed_time;
 
-#define PREBOOT_INTERVAL 20000
-#define PREBOOT_SHOW_COUNT_AT 2000
-#define PREBOOT_SHOW_UBERCOUNT_AT 12500
 
-#define BADGE_METER_INTERVAL 6
-#define BADGE_FRIENDLY_CUTOFF 60
+// Gaydar
+uint8_t neighbor_counts[RECEIVE_WINDOW] = {0};
+uint8_t window_position = 0;
+byte badges_seen[BADGES_IN_SYSTEM];
+uint8_t total_badges_seen = 0;
+uint8_t uber_badges_seen = 0;
+uint8_t last_neighbor_count = 0;
+uint8_t neighbor_count = 0;
+
+// LED subsystem
+uint16_t time_since_last_bling = 0;
+uint16_t seconds_between_blings = 25;
+uint8_t current_bling = 0;
+uint8_t shown_badgecount = 0;
+uint8_t shown_ubercount = 0;
+uint8_t in_preboot = 1;
+uint8_t current_sys = 0;
+unsigned long led_next_ring = 0;
+unsigned long led_next_uber_fade = 0;
+unsigned long led_next_sys = 0;
+uint8_t idling = 1;
+uint16_t party_time = 0;
+uint8_t party_mode = 0;
+uint8_t need_to_show_near_badge = 0;
+uint8_t need_to_show_new_badge = 0;
+uint8_t need_to_show_uber_count = 0;
+uint8_t need_to_show_badge_count = 0;
 
 // Configuration settings struct, to be stored on the EEPROM.
 struct {
@@ -69,13 +108,9 @@ struct {
 
 // Payload struct
 struct qcbpayload {
-  uint16_t from_id, authority, cycle_number, timestamp, badges_in_system;
   uint8_t ver;
+  uint16_t from_id, authority, cycle_number, timestamp, badges_in_system, party;
 } in_payload, out_payload;
-
-byte badges_seen[BADGES_IN_SYSTEM];
-uint8_t total_badges_seen = 0;
-uint8_t uber_badges_seen = 0;
 
 // Convert our configuration frequency code to the actual frequency.
 static word code2freq(byte code) {
@@ -88,8 +123,9 @@ static word code2type(byte code) {
 }
 
 // Print our current configuration to the Serial console.
-static void showConfig() {
 #if !(USE_LEDS)
+static void showConfig() {
+
     Serial.print("I am badge ");
     Serial.println(config.badge_id);
     Serial.print(' ');
@@ -105,14 +141,16 @@ static void showConfig() {
     Serial.print(':');
     Serial.print((int) config.bcn_id);
     Serial.println();
-#endif
 }
+#endif
 
 // Load our configuration from EEPROM (also computing some payload).
 static void loadConfig() {
     byte* p = (byte*) &config;
     for (byte i = 0; i < sizeof config; ++i)
         p[i] = eeprom_read_byte((byte*) i);
+    for (byte i = 0; i < BADGES_IN_SYSTEM; i++)
+        badges_seen = eeprom_read_byte((byte*) (i + sizeof config));
     // if loaded config is not valid, replace it with defaults
     if (config.check != CONFIG_STRUCT_VERSION) {
         config.check = CONFIG_STRUCT_VERSION;
@@ -152,6 +190,11 @@ static void loadConfig() {
     rf12_initialize(config.rcv_id, code2type(config.freq), 1);
 }
 
+static void saveBadge(uint16_t badge_id) {
+  int badge_address = (sizeof config) + badge_id;
+  eeprom_write_byte((uint8_t *) badge_id, badges_seen[badge_id]);
+}
+
 static boolean has_seen_badge(uint16_t badge_id) {
   return (badges_seen[badge_id] & 0b0000001);
 }
@@ -182,20 +225,6 @@ static void saveConfig() {
     loadConfig();
 }
 
-#define LOOP_TRUE 1
-#define LOOP_FALSE 0
-
-#define UBERFADE_TRUE 1
-#define UBERFADE_FALSE 0
-
-#define CROSSFADE_TRUE 1
-#define CROSSFADE_FALSE 0
-
-static void saveBadge(uint16_t badge_id) {
-  int badge_address = (sizeof config) + badge_id;
-  eeprom_write_byte((uint8_t *) badge_id, badges_seen[badge_id]);
-}
-#define CROSSFADING 1
 void setup () {
 #if !(USE_LEDS)
     Serial.begin(57600);
@@ -213,29 +242,6 @@ void setup () {
     }
 #endif
 }
-
-uint16_t time_new_animation_allowed = 0;
-uint16_t time_since_last_bling = 0;
-uint16_t seconds_between_blings = 25;
-uint8_t current_bling = 0;
-uint8_t num_blings = 10;
-uint8_t shown_badgecount = 0;
-uint8_t shown_ubercount = 0;
-uint8_t in_preboot = 1;
-uint8_t current_sys = 0;
-unsigned long led_next_ring = 0;
-unsigned long led_next_uber_fade = 0;
-unsigned long led_next_sys = 0;
-uint8_t idling = 0;
-uint8_t party_mode = 0;
-
-uint8_t need_to_show_near_badge = 0;
-uint8_t need_to_show_new_badge = 0;
-uint8_t need_to_show_uber_count = 0;
-uint8_t need_to_show_badge_count = 0;
-
-uint8_t last_neighbor_count = 0;
-uint8_t neighbor_count = 0;
 
 void set_heartbeat(uint8_t target_sys) {
   if (target_sys != current_sys) {
@@ -290,63 +296,52 @@ void show_uber_count() {
                                             DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
 }
 
-#define AM_UBER (uber_badges_seen >= UBER_COUNT)
-#define AM_SUPERUBER (config.badge_id < UBER_COUNT)
-#define AM_FRIENDLY (total_badges_seen > BADGE_FRIENDLY_CUTOFF)
-
-
 void loop () {
   
   // Compute t using elapsed time since last iteration of this loop.
   current_time = millis();
   elapsed_time = current_time - last_time;
+  last_time = current_time;
+  
+  if (!in_preboot)
+    time_since_last_bling += elapsed_time;
   
 #if USE_LEDS
-  if (current_time < PREBOOT_INTERVAL) {
-    if (current_time > PREBOOT_SHOW_COUNT_AT && !shown_badgecount) {
-      show_badge_count();
-      shown_badgecount = 1;
-    }
-    if (current_time > PREBOOT_SHOW_UBERCOUNT_AT && !shown_ubercount) {
-      show_uber_count();
-      shown_ubercount = 1;
-    }
-  } else if (in_preboot) {
+  if (in_preboot && current_time > PREBOOT_INTERVAL) {
     in_preboot = 0;
     led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
     time_since_last_bling = 0;
+    idling = 1; // TODO: unnecessary?
+  }
+  
+  if (idling && !led_ring_animating && need_to_show_near_badge) {
+    idling = 0;
+    need_to_show_near_badge = 0;
+    led_next_ring = set_ring_lights_animation(NEARBADGE_INDEX, LOOP_FALSE, CROSSFADE_FALSE, 
+                                              DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
+  }
+  
+  if (!led_ring_animating && need_to_show_new_badge == 1) {
+    idling = 0;
+    need_to_show_new_badge = 2;
+    led_next_ring = set_ring_lights_animation(NEWBADGE_INDEX, LOOP_FALSE, CROSSFADE_FALSE, 
+                                              DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
+    led_next_sys = set_system_lights_animation(SYSTEM_NEWBADGE_INDEX, LOOP_TRUE, 0);
+  }
+  
+  if (idling && !led_ring_animating && need_to_show_badge_count) {
+    idling = 0;
+    need_to_show_badge_count = 0;
+    show_badge_count();
+  }
+  
+  if (idling && !led_ring_animating && need_to_show_uber_count) {
+    idling = 0;
+    need_to_show_uber_count = 0;
+    show_uber_count();
   }
   
   if (!in_preboot) {
-    time_since_last_bling += elapsed_time;
-    
-    if (idling && !led_ring_animating && need_to_show_near_badge) {
-      idling = 0;
-      need_to_show_near_badge = 0;
-      led_next_ring = set_ring_lights_animation(NEARBADGE_INDEX, LOOP_FALSE, CROSSFADE_FALSE, 
-                                                DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
-    }
-    
-    if (!led_ring_animating && need_to_show_new_badge == 1) {
-      idling = 0;
-      need_to_show_new_badge = 2;
-      led_next_ring = set_ring_lights_animation(NEWBADGE_INDEX, LOOP_FALSE, CROSSFADE_FALSE, 
-                                                DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
-      led_next_sys = set_system_lights_animation(SYSTEM_NEWBADGE_INDEX, LOOP_TRUE, 0);
-    }
-    
-    if (idling && !led_ring_animating && need_to_show_badge_count) {
-      idling = 0;
-      need_to_show_badge_count = 0;
-      show_badge_count();
-    }
-    
-    if (idling && !led_ring_animating && need_to_show_uber_count) {
-      idling = 0;
-      need_to_show_uber_count = 0;
-      show_uber_count();
-    }
-    
     if (idling && time_since_last_bling > seconds_between_blings * 1000) {
       // Time to do a "bling":
       current_bling = random(BLING_START_INDEX, 
@@ -395,8 +390,6 @@ void loop () {
   if (in_preboot) return; // Don't look for other badges in preboot.
   
 #endif
-
-  last_time = current_time;
   
   //////// RADIO SECTION /////////
   
