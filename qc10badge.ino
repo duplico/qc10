@@ -28,7 +28,6 @@ extern "C"
 }
 
 // General (overall system) configuration
-#define UPDATE_EEPROM 1
 #define UBER_COUNT 10
 #define CONFIG_STRUCT_VERSION 1
 #define STARTING_ID 0
@@ -155,7 +154,7 @@ static void loadConfig() {
     for (byte i = 0; i < sizeof config; ++i)
         p[i] = eeprom_read_byte((byte*) i);
     // if loaded config is not valid, replace it with defaults
-    if (config.check != CONFIG_STRUCT_VERSION || UPDATE_EEPROM) {
+    if (config.check != CONFIG_STRUCT_VERSION) {
         config.check = CONFIG_STRUCT_VERSION;
         config.freq = 4;
         config.rcv_group = 0;
