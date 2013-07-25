@@ -12,6 +12,10 @@
 //
 // Otherwise:
 // (c) 13-Dec-2012 George Louthan <georgerlouth@nthefourth.com>
+// Required fuse settings:
+// lfuse: 0xBF
+// hfuse: 0xDE
+
 #include <JeeLib.h>
 #include <avr/eeprom.h>
 #include <avr/pgmspace.h>
@@ -24,14 +28,16 @@ extern "C"
 }
 
 // General (overall system) configuration
+#define UPDATE_EEPROM 1
 #define UBER_COUNT 10
-#define CONFIG_STRUCT_VERSION 156
+#define CONFIG_STRUCT_VERSION 1
+#define STARTING_ID 0
 #define BADGES_IN_SYSTEM 120
 #define BADGE_METER_INTERVAL 6
 #define BADGE_FRIENDLY_CUTOFF 60
 
 // Radio Configuration
-#define LEARNING 1 // Whether to auto-negotiate my ID. // TODO: EEPROM?
+#define LEARNING 0 // Whether to auto-negotiate my ID. // TODO: EEPROM?
 #define RECEIVE_WINDOW 3 // How many beacon cycles to look at together.
 // NB: It's nice if the listen duration is divisible by BADGES_IN_SYSTEM 
 #define R_SLEEP_DURATION 5000
@@ -67,11 +73,10 @@ unsigned long last_time;
 unsigned long current_time;
 unsigned long elapsed_time;
 
-
 // Gaydar
 uint8_t neighbor_counts[RECEIVE_WINDOW] = {0};
 uint8_t window_position = 0;
-byte badges_seen[BADGES_IN_SYSTEM];
+uint8_t badges_seen[BADGES_IN_SYSTEM];
 uint8_t total_badges_seen = 0;
 uint8_t uber_badges_seen = 0;
 uint8_t last_neighbor_count = 0;
@@ -93,8 +98,8 @@ uint16_t party_time = 0;
 uint8_t party_mode = 0;
 uint8_t need_to_show_near_badge = 0;
 uint8_t need_to_show_new_badge = 0;
-uint8_t need_to_show_uber_count = 0;
-uint8_t need_to_show_badge_count = 0;
+uint8_t need_to_show_uber_count = 1;
+uint8_t need_to_show_badge_count = 1;
 
 // Configuration settings struct, to be stored on the EEPROM.
 struct {
@@ -149,17 +154,15 @@ static void loadConfig() {
     byte* p = (byte*) &config;
     for (byte i = 0; i < sizeof config; ++i)
         p[i] = eeprom_read_byte((byte*) i);
-    for (byte i = 0; i < BADGES_IN_SYSTEM; i++)
-        badges_seen = eeprom_read_byte((byte*) (i + sizeof config));
     // if loaded config is not valid, replace it with defaults
-    if (config.check != CONFIG_STRUCT_VERSION) {
+    if (config.check != CONFIG_STRUCT_VERSION || UPDATE_EEPROM) {
         config.check = CONFIG_STRUCT_VERSION;
         config.freq = 4;
         config.rcv_group = 0;
         config.rcv_id = 1;
         config.bcn_group = 0;
         config.bcn_id = 1;
-        config.badge_id = 1;
+        config.badge_id = STARTING_ID;
         config.badges_in_system = BADGES_IN_SYSTEM;
         config.r_sleep_duration = R_SLEEP_DURATION;
         config.r_listen_duration = R_LISTEN_DURATION;
@@ -185,14 +188,20 @@ static void loadConfig() {
     out_payload.from_id = config.badge_id;
     out_payload.badges_in_system = config.badges_in_system;
     out_payload.ver = config.check;
-    
+    #if !(USE_LEDS)
     showConfig();
+    #endif
     rf12_initialize(config.rcv_id, code2type(config.freq), 1);
 }
 
 static void saveBadge(uint16_t badge_id) {
   int badge_address = (sizeof config) + badge_id;
   eeprom_write_byte((uint8_t *) badge_id, badges_seen[badge_id]);
+}
+
+static void loadBadges() {
+  for (byte i = 0; i < BADGES_IN_SYSTEM; i++)
+      badges_seen[i] = eeprom_read_byte((byte*) (i + sizeof config));
 }
 
 static boolean has_seen_badge(uint16_t badge_id) {
@@ -211,7 +220,7 @@ static boolean just_saw_badge(uint16_t badge_id) {
   }
   total_badges_seen++;
   // TODO:
-  // saveBadge(badge_id);
+  // (badge_id);
   return true;
 }
 
@@ -229,9 +238,11 @@ void setup () {
 #if !(USE_LEDS)
     Serial.begin(57600);
     Serial.println(57600);
-    randomSeed(analogRead(0));
+#else
+    randomSeed(analogRead(0)); // For randomly choosing blings
 #endif
     loadConfig();
+    loadBadges();
     last_time = millis();
     current_time = millis();
 #if USE_LEDS
@@ -307,21 +318,29 @@ void loop () {
     time_since_last_bling += elapsed_time;
   
 #if USE_LEDS
+  /* if (!idling && !led_ring_animating) {
+    idling = 1;
+  } */
   if (in_preboot && current_time > PREBOOT_INTERVAL) {
     in_preboot = 0;
     led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
     time_since_last_bling = 0;
     idling = 1; // TODO: unnecessary?
   }
+  if (!led_sys_animating) // TODO: Is this right?
+    led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
   
-  if (idling && !led_ring_animating && need_to_show_near_badge) {
+  if (idling && !led_ring_animating && need_to_show_near_badge && !need_to_show_new_badge) {
     idling = 0;
     need_to_show_near_badge = 0;
     led_next_ring = set_ring_lights_animation(NEARBADGE_INDEX, LOOP_FALSE, CROSSFADE_FALSE, 
                                               DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
   }
+  else if (need_to_show_new_badge) {
+    need_to_show_near_badge = 0;
+  }
   
-  if (!led_ring_animating && need_to_show_new_badge == 1) {
+  if (need_to_show_new_badge == 1) {
     idling = 0;
     need_to_show_new_badge = 2;
     led_next_ring = set_ring_lights_animation(NEWBADGE_INDEX, LOOP_FALSE, CROSSFADE_FALSE, 
@@ -408,8 +427,8 @@ void loop () {
   // (my authority is the lowest badge to whom I can directly communicate; if one
   //  of my neighbors is communicating directly with a lower id badge than I am,
   //  that neighbor will be more authoritative than me.):
-  static uint16_t lowest_badge_this_cycle = config.badge_id;
   // whether the radio is asleep:
+  static uint16_t lowest_badge_this_cycle = config.badge_id;
   static boolean badge_is_sleeping = false;
   t += elapsed_time;
   
@@ -468,6 +487,7 @@ void loop () {
             // Increment our beacon count in the current position in our
             // sliding window.
             neighbor_counts[window_position]+=1;
+            set_system_lights_animation(10, LOOP_FALSE, 0); // TODO
 #if USE_LEDS
             // See if this is a new friend:
             if (just_saw_badge(in_payload.from_id)) {
@@ -490,9 +510,8 @@ void loop () {
                 my_authority = config.badge_id;
             }
 #endif
-
             lowest_badge_this_cycle = min(in_payload.from_id, lowest_badge_this_cycle);
-            if (in_payload.authority < my_authority) {
+            if (in_payload.authority < my_authority || (in_payload.authority == my_authority && in_payload.from_id < config.badge_id)) {
 #if !(USE_LEDS)
               Serial.print("|--Detected a higher authority ");
               Serial.print(in_payload.authority);
@@ -530,8 +549,11 @@ void loop () {
         // Beacon.
 #if !(USE_LEDS)
         Serial.println("->|BCN my number ");
+#else
+        set_system_lights_animation(9, LOOP_FALSE, 0);
 #endif
         rf12_sendStart(0, &out_payload, sizeof out_payload);
+        my_authority = config.badge_id;
       }
     }
   }

@@ -187,7 +187,7 @@ uint16_t led_ring_num_frames = 0;
 uint8_t led_ring_crossfade = 0;
 uint8_t led_ring_crossfade_step = 0;
 uint8_t led_ring_uberfade = 0;
-uint8_t led_ring_blink = 0;
+uint8_t led_ring_blinking = 0;
 QCRing current_ring;
 QCRing next_ring;
 
@@ -209,6 +209,7 @@ void ring_fade(uint8_t fade) {
   }
 }
 
+// TODO: handle blinking
 uint16_t uber_ring_fade() {
   if (!led_ring_uberfade) return current_ring.ring_delay;
   uint16_t i, j;
@@ -234,7 +235,7 @@ uint8_t set_ring_lights_animation(uint8_t animation_number, uint8_t looping, uin
   led_ring_cur_frame = 0;
   led_ring_crossfade = crossfade;
   led_ring_crossfade_step = crossfade_step;
-  led_ring_blink = 0;
+  led_ring_blinking = 0;
   memcpy_P(&current_ring, &ring_animations[led_ring_animation][led_ring_cur_frame], sizeof(QCRing));
   if (num_frames == 0)
     led_ring_num_frames = ring_anim_lengths[led_ring_animation];
@@ -249,7 +250,7 @@ uint8_t set_ring_lights_blink(uint8_t animation_number, uint8_t looping, uint8_t
                               QCRing blink_ring) {
   set_ring_lights_animation(animation_number, looping, crossfade,
                             crossfade_step, num_frames, uberfade);
-  led_ring_blink = 1;
+  led_ring_blinking = 1;
   next_ring = blink_ring;
   return 0;
 }
@@ -268,16 +269,23 @@ uint16_t ring_lights_update_loop() {
     required_delay_millis += current_ring.ring_delay; // hold this frame
   }
   // We split the fade into 256 steps, so what we do is setup targets,
-  // then spend some iterations fading.
+  // then spend some iterations fading (possibly).
   if (led_ring_count == 0 || !led_ring_crossfade) {
+  // TODO: fix for blinking:
     memcpy_P(&current_ring, &ring_animations[led_ring_animation][led_ring_cur_frame], sizeof(QCRing));
     setupTargetRing(current_ring); // Sets up all the targets
     // Next frame in the pattern:
     led_ring_cur_frame++;
     // If we just finished the last one, loop.
-    if (led_ring_cur_frame == led_ring_num_frames) {
-      led_ring_cur_frame = 0;
-      if (!led_ring_looping) {
+    if (led_ring_cur_frame >= led_ring_num_frames) {
+      if (led_ring_looping)
+        led_ring_cur_frame = 0;
+      else if (led_ring_blinking) {
+        QCRing swap_ring = current_ring;
+        current_ring = next_ring;
+        next_ring = swap_ring;        
+      }
+      else {
         led_ring_animating = 0;
       }
     }

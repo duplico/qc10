@@ -58,6 +58,15 @@ QCSys heartbeats[][4] = {
    {0, 0, 0, 0, 90},
    {24, 24, 24, 0, 90},
    {0, 0, 0, 0, 90}},
+   
+  {{24, 24, 24, 0, 10}, // SPECIAL: XMIT 9
+   {0, 0, 0, 0, 90},
+   {0, 0, 0, 0, 0},
+   {0, 0, 0, 0, 0}}, /*
+  {{0, 0, 0, 24, 10}, // SPECIAL: RECV 10
+   {0, 0, 0, 0, 90},
+   {0, 0, 0, 0, 0},
+   {0, 0, 0, 0, 0}},*/
 };
 
 // EFFECT: teardrop
@@ -2173,7 +2182,7 @@ QCRing superuber[] PROGMEM = {
    50}
 }; //superuber
 
-// EFFECT: alternate rings to show superuber at preboot
+//
 #define QCR_DELAY 90
 #define BADGECOUNTLEN 25
 QCRing badgecount[] PROGMEM = {
@@ -2254,7 +2263,7 @@ QCRing badgecount[] PROGMEM = {
    QCR_DELAY},
 }; //badgecount
 
-// EFFECT: alternate rings to show superuber at preboot
+// Uber count:
 #define QCR_DELAY 150
 #define UBERCOUNTLEN 20
 QCRing ubercount[] PROGMEM = {
@@ -2320,7 +2329,7 @@ QCRing ubercount[] PROGMEM = {
   {0, 0, 0, 0, 0, 0,
    0, 0, 0, 0, 0, 0,
    50}
-}; //badgecount
+}; //ubercount
 
 QCRing *ring_animations[] = {&bling1, &bling2, &bling3, &bling4, &bling5, 
                              &bling6, &bling7, &bling8, &bling9, &bling10,
