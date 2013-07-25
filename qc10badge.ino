@@ -317,9 +317,6 @@ void loop () {
     time_since_last_bling += elapsed_time;
   
 #if USE_LEDS
-  /* if (!idling && !led_ring_animating) {
-    idling = 1;
-  } */
   if (in_preboot && current_time > PREBOOT_INTERVAL) {
     in_preboot = 0;
     led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
@@ -347,18 +344,23 @@ void loop () {
     led_next_sys = set_system_lights_animation(SYSTEM_NEWBADGE_INDEX, LOOP_TRUE, 0);
   }
   
-  if (idling && !led_ring_animating && need_to_show_badge_count) {
+  if (idling && need_to_show_badge_count) {
     idling = 0;
     need_to_show_badge_count = 0;
     show_badge_count();
   }
   
-  if (idling && !led_ring_animating && need_to_show_uber_count) {
+  if (idling && need_to_show_uber_count) {
     idling = 0;
     need_to_show_uber_count = 0;
     show_uber_count();
   }
   
+  if (in_preboot && !led_ring_animating && !idling) {
+    // TODO: turn off lights
+    idling = 1;
+  }
+    
   if (!in_preboot) {
     if (idling && time_since_last_bling > seconds_between_blings * 1000) {
       // Time to do a "bling":
