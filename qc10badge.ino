@@ -436,18 +436,8 @@ void loop () {
   } else if (need_to_show_near_badge) {
     need_to_show_near_badge = 0;
   }
-  if (idling && !party_mode && time_since_last_bling > seconds_between_blings * 1000) {
-    // Time to do a "bling":
-    current_bling = random(BLING_START_INDEX, 
-                           BLING_START_INDEX + BLING_COUNT + (AM_FRIENDLY ? UBLING_COUNT : 0));
-    
-    led_next_ring = set_ring_lights_animation(BLING_START_INDEX + current_bling, LOOP_FALSE, 
-                                              CROSSFADING, 
-                                              DEFAULT_CROSSFADE_STEP, 0, AM_SUPERUBER);
-    time_since_last_bling = 0;
-    idling = 0;
-  }
   if (idling && just_became_idle) {
+    time_since_last_bling = 0;
     just_became_idle = 0;
     if (party_mode) { // Do party mode behavior
       if (need_to_show_new_badge == 2) {
@@ -468,6 +458,17 @@ void loop () {
         need_to_show_new_badge = 0;
       }
     }
+  }
+  if (idling && !party_mode && time_since_last_bling > seconds_between_blings * 1000) {
+    // Time to do a "bling":
+    current_bling = random(BLING_START_INDEX, 
+                           BLING_START_INDEX + BLING_COUNT + (AM_FRIENDLY ? UBLING_COUNT : 0));
+    
+    led_next_ring = set_ring_lights_animation(BLING_START_INDEX + current_bling, LOOP_FALSE, 
+                                              CROSSFADING, 
+                                              DEFAULT_CROSSFADE_STEP, 0, AM_SUPERUBER);
+    time_since_last_bling = 0;
+    idling = 0;
   }
   // The following interrupts ANYTHING except for the new badge animation.
   if (party_mode && need_to_show_new_badge == 0) {
