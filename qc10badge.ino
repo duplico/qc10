@@ -45,7 +45,7 @@ extern "C"
 #define R_NUM_SLEEP_CYCLES 6
 
 // LED configuration
-#define USE_LEDS 1
+#define USE_LEDS 0
 #define DEFAULT_CROSSFADE_STEP 2
 #define PREBOOT_INTERVAL 20000
 #define PREBOOT_SHOW_COUNT_AT 2000
@@ -212,6 +212,13 @@ static boolean has_seen_badge(uint16_t badge_id) {
 static boolean just_saw_badge(uint16_t badge_id) {
   boolean seen_before = has_seen_badge(badge_id);
   badges_seen[badge_id] |= 0b00000001;
+#if !(USE_LEDS)
+  // TODO: these seems to be a problem with these counts.
+  Serial.print("--|Just saw ");
+  Serial.print(badge_id);
+  Serial.print(". Seen: ");
+  Serial.println(has_seen_badge(badge_id));
+#endif
   if (seen_before) {
     return false;
   }
@@ -498,7 +505,7 @@ void loop () {
   
 
   // Radio duty cycle.
-  if (cycle_number != config.r_num_sleep_cycles && t < config.r_sleep_duration) {
+  if (cycle_number != 1 && t < config.r_sleep_duration) {
     // Radio sleeps unless we're in the last sleep cycle of an interval
     if (!badge_is_sleeping) {
       // Go to sleep if necessary, printing cycle information.
@@ -552,12 +559,10 @@ void loop () {
             // sliding window.
             neighbor_counts[window_position]+=1;
             set_system_lights_animation(10, LOOP_FALSE, 0); // TODO
-#if USE_LEDS
             // See if this is a new friend:
             if (just_saw_badge(in_payload.from_id)) {
               need_to_show_new_badge = 1;
             }
-#endif
 #if LEARNING
             // If we're in ID learning mode, and we've heard an ID that we
             // thought was supposed to be us:
