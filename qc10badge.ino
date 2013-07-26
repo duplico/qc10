@@ -45,7 +45,7 @@ extern "C"
 #define R_NUM_SLEEP_CYCLES 6
 
 // LED configuration
-#define USE_LEDS 0
+#define USE_LEDS 1
 #define DEFAULT_CROSSFADE_STEP 2
 #define PREBOOT_INTERVAL 20000
 #define PREBOOT_SHOW_COUNT_AT 2000
@@ -95,7 +95,7 @@ unsigned long led_next_sys = 0;
 uint8_t idling = 1;
 uint8_t just_became_idle = 0;
 uint16_t party_time = 0;
-uint8_t party_mode = 0;
+uint8_t party_mode = 1;
 uint8_t need_to_show_near_badge = 0;
 uint8_t need_to_show_new_badge = 0;
 uint8_t need_to_show_uber_count = 1;
@@ -309,10 +309,12 @@ void show_uber_count() {
                                             DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
 }
 
-uint32_t volume_sums = 0;
+float volume_sums = 0;
 uint16_t volume_samples = 0;
-uint8_t volume_avg = 0;
+float volume_avg = 0;
 uint16_t volume_time_since = 0;
+uint8_t volume_peaking = 0;
+uint8_t volume_peaking_last = 0;
 #define VOLUME_INTERVAL 2000
 
 void loop () {
@@ -320,23 +322,36 @@ void loop () {
   elapsed_time = current_time - last_time;
   last_time = current_time;
   volume_time_since += elapsed_time;
-  // for party mode:
+  
+  ///////////////////////
+  // AUDIO PEAK DETECTION
+  ///////////////////////
   if (volume_time_since > VOLUME_INTERVAL) {
     volume_time_since = 0;
     volume_avg = volume_sums / volume_samples;
     volume_sums = volume_avg;
     volume_samples = 1;
   }
+  volume_peaking_last = volume_peaking;
   if (new_amplitude_available) {
-    Serial.println(adc_amplitude);
-    Serial.println(voltage);
-    volume_sums += adc_amplitude;
+    volume_sums += voltage;
     volume_samples++;
-    if (adc_amplitude > volume_avg * 1.2) {
-          set_system_lights_animation(9, LOOP_FALSE, 0); // TODO
+    if (voltage > volume_avg + .1) {
+      volume_peaking = 1;
     }
+    else {
+      volume_peaking = 0;
+    }
+    new_amplitude_available = 0;
   }
-  
+#if !(USE_LEDS)
+  if (volume_peaking && !volume_peaking_last) {
+    Serial.print("Peak at ");
+    Serial.print(voltage);
+    Serial.print(" vs avg ");
+    Serial.println(volume_avg);
+  }
+#endif  
   if (!in_preboot)
     time_since_last_bling += elapsed_time;
   
@@ -381,8 +396,11 @@ void loop () {
   }
   if (in_preboot) return; // Don't look for other badges in preboot.
 //// ONLY AFTER BOOT:
-  if (!led_sys_animating) // TODO: Is this right?
+  if (!led_sys_animating && !party_mode) // TODO: Is this right?
     led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
+  else if (!led_sys_animating) {
+    // TODO: Do party mode LED thing.
+  }
     
   if (need_to_show_new_badge == 1) {
     idling = 0;
@@ -393,7 +411,7 @@ void loop () {
     // Pre-empt the near badge animation.
     need_to_show_near_badge = 0;
   }
-  if (need_to_show_near_badge && need_to_show_new_badge == 0) {
+  if (need_to_show_near_badge && !party_mode && need_to_show_new_badge == 0) {
     idling = 0;
     just_became_idle = 0;
     need_to_show_near_badge = 0;
@@ -402,7 +420,7 @@ void loop () {
   } else if (need_to_show_near_badge) {
     need_to_show_near_badge = 0;
   }
-  if (idling && time_since_last_bling > seconds_between_blings * 1000) {
+  if (idling && !party_mode && time_since_last_bling > seconds_between_blings * 1000) {
     // Time to do a "bling":
     current_bling = random(BLING_START_INDEX, 
                            BLING_START_INDEX + BLING_COUNT + (AM_FRIENDLY ? UBLING_COUNT : 0));
@@ -433,6 +451,13 @@ void loop () {
         led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
         need_to_show_new_badge = 0;
       }
+    }
+  }
+  // The following interrupts ANYTHING except for the new badge animation.
+  if (party_mode && need_to_show_new_badge == 0) {
+    if (volume_peaking && !volume_peaking_last) {
+      // We've detected a new beat.
+      set_system_lights_animation(9, LOOP_FALSE, 0); // TODO
     }
   }
   if (current_time >= led_next_uber_fade) {
