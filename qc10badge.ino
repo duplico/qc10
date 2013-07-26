@@ -86,7 +86,7 @@ const uint16_t LNA_COMMANDS[4] = {
   0x94AA, // -6 dB
   0x94B2, // -14 dB
   0x94BA  // -20 dB
-}
+};
 
 uint8_t lna_setting = 0;
 
