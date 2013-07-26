@@ -297,9 +297,10 @@ void show_badge_count() {
   if (end_index < 13)
     end_index = 13;
 
-  led_next_ring = set_ring_lights_animation(BADGECOUNT_INDEX, LOOP_FALSE, 
-                                            CROSSFADING, DEFAULT_CROSSFADE_STEP,
-                                            end_index, UBERFADE_FALSE);
+  led_next_ring = set_ring_lights_blink(BADGECOUNT_INDEX, LOOP_FALSE, 
+                                        CROSSFADING, DEFAULT_CROSSFADE_STEP,
+                                        end_index, UBERFADE_FALSE,
+                                        qcr_blinky_short, 8);
 }
 
 void show_uber_count() {

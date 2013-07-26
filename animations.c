@@ -2355,3 +2355,9 @@ uint8_t ring_anim_lengths[] = {BLING1LEN, BLING2LEN, BLING3LEN, BLING4LEN, BLING
                                UBER6LEN, UBER7LEN, UBER8LEN, UBER9LEN, UBER10LEN,
                                NEWBADGELEN, NEARBADGELEN, BADGECOUNTLEN, SUPERUBERLEN,
                                UBERCOUNTLEN, BLANKLEN};
+
+// For blinking:
+QCRing qcr_blinky_short = {
+  0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0,
+  90};

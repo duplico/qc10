@@ -274,7 +274,8 @@ uint16_t ring_lights_update_loop() {
   // We split the fade into 256 steps, so what we do is setup targets,
   // then spend some iterations fading (possibly).
   if (led_ring_count == 0 || !led_ring_crossfade) {
-    memcpy_P(&current_ring, &ring_animations[led_ring_animation][led_ring_cur_frame], sizeof(QCRing));
+    if (!led_ring_blinking || led_ring_cur_frame+1 < led_ring_num_frames)
+      memcpy_P(&current_ring, &ring_animations[led_ring_animation][led_ring_cur_frame], sizeof(QCRing));
     setupTargetRing(current_ring); // Sets up all the targets
     // Next frame in the pattern:
     led_ring_cur_frame++;

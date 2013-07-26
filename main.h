@@ -200,9 +200,10 @@
 #endif
 
 // ---------- End TLC5940 Configuration Section ----------
-
+#include "animations.h"
 uint8_t set_system_lights_animation(uint8_t, uint8_t, uint8_t);
 uint8_t set_ring_lights_animation(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
+uint8_t set_ring_lights_blink(uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t, QCRing, uint16_t);
 void ring_stop_animating();
 uint16_t system_lights_update_loop();
 uint16_t ring_lights_update_loop();
