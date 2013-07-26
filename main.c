@@ -302,3 +302,20 @@ uint16_t ring_lights_update_loop() {
   // Return how long we should wait until this is called again.
   return required_delay_millis;  
 }
+
+volatile uint8_t adc_value = 0;
+void setupAdc() {  
+  ADMUX |= (1 << REFS0); // Set ADC reference to AVCC
+  ADMUX |= (1 << ADLAR); // Left adjust ADC result to allow easy 8 bit reading 
+
+  ADCSRA |= (1 << ADEN);  // Enable ADC
+  ADCSRA |= (1 << ADATE); // Enable auto-triggering
+  ADCSRA |= (1 << ADIE);  // Enable ADC Interrupt
+  sei();                 // Enable Global Interrupts
+  ADCSRA |= (1 << ADSC);  // Start A2D Conversions
+}
+
+ISR(ADC_vect) 
+{ 
+  adc_value = ADCH;
+}

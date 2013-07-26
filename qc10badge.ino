@@ -45,7 +45,7 @@ extern "C"
 #define R_NUM_SLEEP_CYCLES 6
 
 // LED configuration
-#define USE_LEDS 1
+#define USE_LEDS 0
 #define DEFAULT_CROSSFADE_STEP 2
 #define PREBOOT_INTERVAL 20000
 #define PREBOOT_SHOW_COUNT_AT 2000
@@ -239,7 +239,7 @@ void setup () {
     Serial.begin(57600);
     Serial.println(57600);
 #else
-    randomSeed(analogRead(0)); // For randomly choosing blings
+//    randomSeed(analogRead(0)); // For randomly choosing blings
 #endif
     loadConfig();
     loadBadges();
@@ -315,6 +315,8 @@ void loop () {
   
   if (!in_preboot)
     time_since_last_bling += elapsed_time;
+  
+  Serial.println(adc_value);
   
 #if USE_LEDS
 //// ALWAYS:
