@@ -29,8 +29,8 @@ extern "C"
 
 // General (overall system) configuration
 #define UBER_COUNT 10
-#define CONFIG_STRUCT_VERSION 1
-#define STARTING_ID 0
+#define CONFIG_STRUCT_VERSION 5
+#define STARTING_ID 2
 #define BADGES_IN_SYSTEM 120
 #define BADGE_METER_INTERVAL 6
 #define BADGE_FRIENDLY_CUTOFF 60
@@ -95,7 +95,7 @@ unsigned long led_next_sys = 0;
 uint8_t idling = 1;
 uint8_t just_became_idle = 0;
 uint16_t party_time = 0;
-uint8_t party_mode = 1;
+uint8_t party_mode = 0;
 uint8_t need_to_show_near_badge = 0;
 uint8_t need_to_show_new_badge = 0;
 uint8_t need_to_show_uber_count = 1;
@@ -220,7 +220,7 @@ static boolean just_saw_badge(uint16_t badge_id) {
   }
   total_badges_seen++;
   // TODO:
-  // (badge_id);
+  // saveBadge(badge_id);
   return true;
 }
 
@@ -257,7 +257,7 @@ void setup () {
 
 void set_heartbeat(uint8_t target_sys) {
   if (target_sys != current_sys) {
-    if (need_to_show_new_badge == 0) {
+    if (need_to_show_new_badge == 0 && !party_mode) {
       led_next_sys = set_system_lights_animation(target_sys, LOOP_TRUE, 0);
     }
     current_sys = target_sys;
@@ -301,12 +301,21 @@ void show_badge_count() {
   led_next_ring = set_ring_lights_blink(BADGECOUNT_INDEX, LOOP_FALSE, 
                                         CROSSFADING, DEFAULT_CROSSFADE_STEP,
                                         end_index, UBERFADE_FALSE,
-                                        qcr_blinky_short, 8);
+                                        qcr_blinky_short, 16);
 }
 
 void show_uber_count() {
-  led_next_ring = set_ring_lights_animation(UBERCOUNT_INDEX, LOOP_FALSE, CROSSFADING, 
+  if (AM_UBER) {
+    // Display "ALL" animation
+    led_next_ring = set_ring_lights_animation(UBERCOUNT_INDEX, LOOP_FALSE, CROSSFADING, 
                                             DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
+  }
+  else {
+  uint8_t end_index = 7 + uber_badges_seen;
+  led_next_ring = set_ring_lights_blink(UBERCOUNT_INDEX, LOOP_FALSE, CROSSFADING, 
+                                        DEFAULT_CROSSFADE_STEP, end_index, UBERFADE_FALSE,
+                                        qcr_ubercount_blinky, 16);
+  }
 }
 
 float volume_sums = 0;
@@ -489,7 +498,7 @@ void loop () {
   
 
   // Radio duty cycle.
-  if (cycle_number != 0 && t < config.r_sleep_duration) {
+  if (cycle_number != config.r_num_sleep_cycles && t < config.r_sleep_duration) {
     // Radio sleeps unless we're in the last sleep cycle of an interval
     if (!badge_is_sleeping) {
       // Go to sleep if necessary, printing cycle information.
@@ -605,7 +614,7 @@ void loop () {
 #if !(USE_LEDS)
         Serial.println("->|BCN my number ");
 #else
-        set_system_lights_animation(9, LOOP_FALSE, 0); // TODO
+        //set_system_lights_animation(9, LOOP_FALSE, 0); // TODO
 #endif
         rf12_sendStart(0, &out_payload, sizeof out_payload);
         my_authority = config.badge_id;
@@ -639,6 +648,10 @@ void loop () {
       my_authority = lowest_badge_this_cycle;
       lowest_badge_this_cycle = config.badge_id;
       cycle_number = 0;
+      // Let's also show our current badge count.
+      // Doing it like this should let people compare!
+      if (need_to_show_badge_count == 0) need_to_show_badge_count = 1;
+      if (!need_to_show_uber_count) need_to_show_uber_count = 1;
     }
   }
 }

@@ -2361,3 +2361,7 @@ QCRing qcr_blinky_short = {
   0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0,
   90};
+QCRing qcr_ubercount_blinky = {
+  0, UBER_DIM, UBER_DIM, 0, UBER_DIM, UBER_DIM,
+  UBER_DIM, UBER_DIM, UBER_DIM, UBER_DIM, UBER_DIM, UBER_DIM,
+  90};
