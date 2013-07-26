@@ -45,7 +45,7 @@ extern "C"
 #define R_NUM_SLEEP_CYCLES 6
 
 // LED configuration
-#define USE_LEDS 1
+#define USE_LEDS 0
 #define DEFAULT_CROSSFADE_STEP 2
 #define PREBOOT_INTERVAL 20000
 #define PREBOOT_SHOW_COUNT_AT 2000
@@ -328,6 +328,8 @@ void loop () {
     volume_samples = 1;
   }
   if (new_amplitude_available) {
+    Serial.println(adc_amplitude);
+    Serial.println(voltage);
     volume_sums += adc_amplitude;
     volume_samples++;
     if (adc_amplitude > volume_avg * 1.2) {

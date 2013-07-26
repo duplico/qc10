@@ -326,7 +326,7 @@ ISR(ADC_vect) { // Analog->Digital Conversion Complete
       signal_max = adc_value;
     else if (adc_value < signal_min)
       signal_min = adc_value;
-    if (sample_count == 1000) {
+    if (sample_count == 100) {
       adc_amplitude = signal_max - signal_min;
       voltage = (adc_amplitude * 3.3) / 256;
       new_amplitude_available = 1;
