@@ -93,6 +93,7 @@ unsigned long led_next_ring = 0;
 unsigned long led_next_uber_fade = 0;
 unsigned long led_next_sys = 0;
 uint8_t idling = 1;
+uint8_t just_became_idle = 0;
 uint16_t party_time = 0;
 uint8_t party_mode = 0;
 uint8_t need_to_show_near_badge = 0;
@@ -317,92 +318,109 @@ void loop () {
     time_since_last_bling += elapsed_time;
   
 #if USE_LEDS
+  // ALWAYS:
+  // PREBOOT ONLY:
+  // TIME TO LEAVE PREBOOT:
+  // ONLY AFTER BOOT:
+
+  // Time to leave preboot:
   if (in_preboot && current_time > PREBOOT_INTERVAL) {
     in_preboot = 0;
     led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
     time_since_last_bling = 0;
     idling = 1; // TODO: unnecessary?
+    just_became_idle = 1;
   }
+  
+  // No matter what:
+  if (!led_ring_animating && !idling) {
+    idling = 1;
+    just_became_idle = 1;
+  }
+  
+  // TODO: only if not in preboot
   if (!led_sys_animating) // TODO: Is this right?
     led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
-  
-  if (idling && !led_ring_animating && need_to_show_near_badge && !need_to_show_new_badge) {
-    idling = 0;
-    need_to_show_near_badge = 0;
-    led_next_ring = set_ring_lights_animation(NEARBADGE_INDEX, LOOP_FALSE, CROSSFADE_FALSE, 
-                                              DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
-  }
-  else if (need_to_show_new_badge) {
-    need_to_show_near_badge = 0;
-  }
-  
+
+    // TODO: only after boot
   if (need_to_show_new_badge == 1) {
     idling = 0;
     need_to_show_new_badge = 2;
     led_next_ring = set_ring_lights_animation(NEWBADGE_INDEX, LOOP_FALSE, CROSSFADE_FALSE, 
                                               DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
     led_next_sys = set_system_lights_animation(SYSTEM_NEWBADGE_INDEX, LOOP_TRUE, 0);
+    // Pre-empt the near badge animation.
+    need_to_show_near_badge = 0;
   }
   
+  // TODO: Only after boot:
+  if (need_to_show_near_badge && need_to_show_new_badge == 0) {
+    idling = 0;
+    just_became_idle = 0;
+    need_to_show_near_badge = 0;
+    led_next_ring = set_ring_lights_animation(NEARBADGE_INDEX, LOOP_FALSE, CROSSFADE_FALSE, 
+                                              DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
+  } else if (need_to_show_near_badge) {
+    need_to_show_near_badge = 0;
+  }
+  
+  // TODO: any time
   if (idling && need_to_show_badge_count) {
     idling = 0;
     need_to_show_badge_count = 0;
     show_badge_count();
   }
-  
+  // TODO: any time
   if (idling && need_to_show_uber_count) {
     idling = 0;
     need_to_show_uber_count = 0;
     show_uber_count();
   }
   
-  if (in_preboot && !led_ring_animating && !idling) {
-    // TODO: turn off lights
-    idling = 1;
+  if (idling && time_since_last_bling > seconds_between_blings * 1000) {
+    // Time to do a "bling":
+    current_bling = random(BLING_START_INDEX, 
+                           BLING_START_INDEX + BLING_COUNT + (AM_FRIENDLY ? UBLING_COUNT : 0));
+    
+    led_next_ring = set_ring_lights_animation(BLING_START_INDEX + current_bling, LOOP_FALSE, 
+                                              CROSSFADING, 
+                                              DEFAULT_CROSSFADE_STEP, 0, AM_SUPERUBER);
+    time_since_last_bling = 0;
+    idling = 0;
   }
-    
-  if (!in_preboot) {
-    if (idling && time_since_last_bling > seconds_between_blings * 1000) {
-      // Time to do a "bling":
-      current_bling = random(BLING_START_INDEX, 
-                             BLING_START_INDEX + BLING_COUNT + (AM_FRIENDLY ? UBLING_COUNT : 0));
-      
-      led_next_ring = set_ring_lights_animation(BLING_START_INDEX + current_bling, LOOP_FALSE, 
-                                                CROSSFADING, 
-                                                DEFAULT_CROSSFADE_STEP, 0, AM_SUPERUBER);
-      time_since_last_bling = 0;
-      idling = 0;
+  
+  if (idling && just_became_idle) {
+    just_became_idle = 0;
+    if (party_mode) { // Do party mode behavior
+      if (need_to_show_new_badge == 2) {
+        // TODO: do party mode behavior for the system light
+        // Although I think this will ALWAYS be necessary when in party mode,
+        //  since this is the only thing that can interrupt party mode.
+      }
     }
-    
-    if (!led_ring_animating && !idling) { 
-      idling = 1;
-      if (AM_SUPERUBER && !party_mode) {
+    else { // Do normal behavior
+      if (AM_SUPERUBER) {
         // Just finished an animation, so it's time for superubers to idle again.
         led_next_ring = set_ring_lights_animation(UBER_START_INDEX + config.badge_id, 
                                                   LOOP_TRUE, CROSSFADING,
                                                   DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
       }
       if (need_to_show_new_badge == 2) {
-        // Just finished the newbadge thing, we need the syslights to heartbeat again:
-        if (party_mode) {
-          // TODO: party heartbeat
-        } else {
-          led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
-        }
+        led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
         need_to_show_new_badge = 0;
       }
     }
-    
-    if (party_mode) { // TODO: audio or whatever party mode reaction
-    }
   }
   
+  // No matter what:
   if (led_ring_animating && current_time >= led_next_ring) {
     led_next_ring = ring_lights_update_loop() + current_time;
   }
+  // Only after preboot
   if (current_time >= led_next_uber_fade) {
     led_next_uber_fade = uber_ring_fade() + current_time;
   }
+  // No matter what
   if (led_sys_animating && current_time >= led_next_sys) {
     led_next_sys = system_lights_update_loop() + current_time;
   }
