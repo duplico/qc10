@@ -45,7 +45,7 @@ extern "C"
 #define R_NUM_SLEEP_CYCLES 6
 
 // LED configuration
-#define USE_LEDS 0
+#define USE_LEDS 1
 #define DEFAULT_CROSSFADE_STEP 2
 #define PREBOOT_INTERVAL 20000
 #define PREBOOT_SHOW_COUNT_AT 2000
@@ -252,6 +252,7 @@ void setup () {
       set_ring_lights_animation(SUPERUBER_INDEX, LOOP_FALSE, CROSSFADING, DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
     }
 #endif
+  setupAdc();
 }
 
 void set_heartbeat(uint8_t target_sys) {
@@ -308,15 +309,34 @@ void show_uber_count() {
                                             DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
 }
 
+uint32_t volume_sums = 0;
+uint16_t volume_samples = 0;
+uint8_t volume_avg = 0;
+uint16_t volume_time_since = 0;
+#define VOLUME_INTERVAL 2000
+
 void loop () {
   current_time = millis();
   elapsed_time = current_time - last_time;
   last_time = current_time;
+  volume_time_since += elapsed_time;
+  // for party mode:
+  if (volume_time_since > VOLUME_INTERVAL) {
+    volume_time_since = 0;
+    volume_avg = volume_sums / volume_samples;
+    volume_sums = volume_avg;
+    volume_samples = 1;
+  }
+  if (new_amplitude_available) {
+    volume_sums += adc_amplitude;
+    volume_samples++;
+    if (adc_amplitude > volume_avg * 1.2) {
+          set_system_lights_animation(9, LOOP_FALSE, 0); // TODO
+    }
+  }
   
   if (!in_preboot)
     time_since_last_bling += elapsed_time;
-  
-  Serial.println(adc_value);
   
 #if USE_LEDS
 //// ALWAYS:

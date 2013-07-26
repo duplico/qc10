@@ -309,17 +309,18 @@ volatile uint8_t adc_amplitude = 0;
 volatile uint16_t sample_count = 0;
 volatile uint8_t adc_value = 0;
 volatile float voltage = 0;
+volatile uint8_t new_amplitude_available = 0;
 
 void setupAdc() {  
-  ADMUX = B01100110;  // default to AVCC VRef, ADC Left Adjust, and ADC channel 6
-  ADCSRB = B00000000; // Analog Input bank 1
-  ADCSRA = B11001111; // ADC enable, ADC start, manual trigger mode, ADC interrupt enable, prescaler = 128
+  ADMUX = 0b01100110;  // default to AVCC VRef, ADC Left Adjust, and ADC channel 6
+  ADCSRB = 0b00000000; // Analog Input bank 1
+  ADCSRA = 0b11001111; // ADC enable, ADC start, manual trigger mode, ADC interrupt enable, prescaler = 128
 }
 
 ISR(ADC_vect) { // Analog->Digital Conversion Complete
-  if ((ADMUX & B00000111) == 6) { // Channel 6:
+  if ((ADMUX & 0b00000111) == 6) { // Channel 6:
     adc_value = ADCH;  // store ADC result (8-bir precision)
-    ADCSRA |= B11000000;  // manually trigger the next ADC
+    ADCSRA |= 0b11000000;  // manually trigger the next ADC
     sample_count++;
     if (adc_value > signal_max)
       signal_max = adc_value;
@@ -328,6 +329,7 @@ ISR(ADC_vect) { // Analog->Digital Conversion Complete
     if (sample_count == 1000) {
       adc_amplitude = signal_max - signal_min;
       voltage = (adc_amplitude * 3.3) / 256;
+      new_amplitude_available = 1;
       
       signal_min = 255;
       signal_max = 0;

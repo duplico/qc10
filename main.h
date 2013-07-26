@@ -213,6 +213,7 @@ extern uint8_t led_ring_animating;
 extern uint8_t led_sys_animating;
 extern volatile uint8_t adc_amplitude;
 extern volatile float voltage;
+extern volatile uint8_t new_amplitude_available;
 void setupAdc();
 
 #endif
