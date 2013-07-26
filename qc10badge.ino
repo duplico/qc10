@@ -308,8 +308,6 @@ void show_uber_count() {
 }
 
 void loop () {
-  
-  // Compute t using elapsed time since last iteration of this loop.
   current_time = millis();
   elapsed_time = current_time - last_time;
   last_time = current_time;
@@ -318,12 +316,37 @@ void loop () {
     time_since_last_bling += elapsed_time;
   
 #if USE_LEDS
-  // ALWAYS:
-  // PREBOOT ONLY:
-  // TIME TO LEAVE PREBOOT:
-  // ONLY AFTER BOOT:
-
-  // Time to leave preboot:
+//// ALWAYS:
+  if (!led_ring_animating && !idling) {
+    idling = 1;
+    just_became_idle = 1;
+  }
+  if (idling && need_to_show_badge_count) {
+    idling = 0;
+    need_to_show_badge_count = 0;
+    show_badge_count();
+  }
+  if (idling && need_to_show_uber_count) {
+    idling = 0;
+    need_to_show_uber_count = 0;
+    show_uber_count();
+  }
+  if (led_ring_animating && current_time >= led_next_ring) {
+    led_next_ring = ring_lights_update_loop() + current_time;
+  }
+  if (led_sys_animating && current_time >= led_next_sys) {
+    led_next_sys = system_lights_update_loop() + current_time;
+  }
+//// PREBOOT ONLY:
+  // Enter preboot idle state (meaning blank the ring)
+  // This needs to be the last thing before "time to leave preboot."
+  if (in_preboot && idling && just_became_idle) {
+    just_became_idle = 0;
+    led_next_ring = set_ring_lights_animation(BLANK_INDEX, LOOP_FALSE, 
+                                              CROSSFADE_FALSE, 0, 0, 
+                                              UBERFADE_FALSE);
+  }
+//// TIME TO LEAVE PREBOOT:
   if (in_preboot && current_time > PREBOOT_INTERVAL) {
     in_preboot = 0;
     led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
@@ -331,18 +354,11 @@ void loop () {
     idling = 1; // TODO: unnecessary?
     just_became_idle = 1;
   }
-  
-  // No matter what:
-  if (!led_ring_animating && !idling) {
-    idling = 1;
-    just_became_idle = 1;
-  }
-  
-  // TODO: only if not in preboot
+  if (in_preboot) return; // Don't look for other badges in preboot.
+//// ONLY AFTER BOOT:
   if (!led_sys_animating) // TODO: Is this right?
     led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
-
-    // TODO: only after boot
+    
   if (need_to_show_new_badge == 1) {
     idling = 0;
     need_to_show_new_badge = 2;
@@ -352,8 +368,6 @@ void loop () {
     // Pre-empt the near badge animation.
     need_to_show_near_badge = 0;
   }
-  
-  // TODO: Only after boot:
   if (need_to_show_near_badge && need_to_show_new_badge == 0) {
     idling = 0;
     just_became_idle = 0;
@@ -363,20 +377,6 @@ void loop () {
   } else if (need_to_show_near_badge) {
     need_to_show_near_badge = 0;
   }
-  
-  // TODO: any time
-  if (idling && need_to_show_badge_count) {
-    idling = 0;
-    need_to_show_badge_count = 0;
-    show_badge_count();
-  }
-  // TODO: any time
-  if (idling && need_to_show_uber_count) {
-    idling = 0;
-    need_to_show_uber_count = 0;
-    show_uber_count();
-  }
-  
   if (idling && time_since_last_bling > seconds_between_blings * 1000) {
     // Time to do a "bling":
     current_bling = random(BLING_START_INDEX, 
@@ -388,7 +388,6 @@ void loop () {
     time_since_last_bling = 0;
     idling = 0;
   }
-  
   if (idling && just_became_idle) {
     just_became_idle = 0;
     if (party_mode) { // Do party mode behavior
@@ -411,22 +410,9 @@ void loop () {
       }
     }
   }
-  
-  // No matter what:
-  if (led_ring_animating && current_time >= led_next_ring) {
-    led_next_ring = ring_lights_update_loop() + current_time;
-  }
-  // Only after preboot
   if (current_time >= led_next_uber_fade) {
     led_next_uber_fade = uber_ring_fade() + current_time;
   }
-  // No matter what
-  if (led_sys_animating && current_time >= led_next_sys) {
-    led_next_sys = system_lights_update_loop() + current_time;
-  }
-  
-  if (in_preboot) return; // Don't look for other badges in preboot.
-  
 #endif
   
   //////// RADIO SECTION /////////
@@ -569,7 +555,7 @@ void loop () {
 #if !(USE_LEDS)
         Serial.println("->|BCN my number ");
 #else
-        set_system_lights_animation(9, LOOP_FALSE, 0);
+        set_system_lights_animation(9, LOOP_FALSE, 0); // TODO
 #endif
         rf12_sendStart(0, &out_payload, sizeof out_payload);
         my_authority = config.badge_id;
