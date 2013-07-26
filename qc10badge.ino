@@ -81,6 +81,15 @@ uint8_t uber_badges_seen = 0;
 uint8_t last_neighbor_count = 0;
 uint8_t neighbor_count = 0;
 
+const uint16_t LNA_COMMANDS[4] = {
+  0x94A2, // Max
+  0x94AA, // -6 dB
+  0x94B2, // -14 dB
+  0x94BA  // -20 dB
+}
+
+uint8_t lna_setting = 0;
+
 // LED subsystem
 uint16_t time_since_last_bling = 0;
 uint16_t seconds_between_blings = 25;
@@ -158,9 +167,9 @@ static void loadConfig() {
     if (config.check != CONFIG_STRUCT_VERSION) {
         config.check = CONFIG_STRUCT_VERSION;
         config.freq = 4;
-        config.rcv_group = 0;
+        config.rcv_group = 0; // TODO: 211
         config.rcv_id = 1;
-        config.bcn_group = 0;
+        config.bcn_group = 0; // TODO: 211
         config.bcn_id = 1;
         config.badge_id = STARTING_ID;
         config.badges_in_system = BADGES_IN_SYSTEM;
@@ -648,6 +657,12 @@ void loop () {
     Serial.println(last_neighbor_count);
 #endif
     cycle_number++;
+  if (!sent_this_cycle) {
+    // TODO: backoff on the LNA.
+    if (lna_setting < 3) {
+      rf12_control(LNA_COMMANDS[++lna_setting]);
+    }
+  }
     sent_this_cycle = false;
     if (cycle_number > config.r_num_sleep_cycles) {
       // Time for a new interval
