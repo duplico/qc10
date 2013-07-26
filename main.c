@@ -303,19 +303,35 @@ uint16_t ring_lights_update_loop() {
   return required_delay_millis;  
 }
 
+volatile uint8_t signal_min = 255;
+volatile uint8_t signal_max = 0;
+volatile uint8_t adc_amplitude = 0;
+volatile uint16_t sample_count = 0;
 volatile uint8_t adc_value = 0;
+volatile float voltage = 0;
+
 void setupAdc() {  
-  ADMUX |= (1 << REFS0); // Set ADC reference to AVCC
-  ADMUX |= (1 << ADLAR); // Left adjust ADC result to allow easy 8 bit reading 
-
-  ADCSRA |= (1 << ADEN);  // Enable ADC
-  ADCSRA |= (1 << ADATE); // Enable auto-triggering
-  ADCSRA |= (1 << ADIE);  // Enable ADC Interrupt
-  sei();                 // Enable Global Interrupts
-  ADCSRA |= (1 << ADSC);  // Start A2D Conversions
+  ADMUX = B01100110;  // default to AVCC VRef, ADC Left Adjust, and ADC channel 6
+  ADCSRB = B00000000; // Analog Input bank 1
+  ADCSRA = B11001111; // ADC enable, ADC start, manual trigger mode, ADC interrupt enable, prescaler = 128
 }
 
-ISR(ADC_vect) 
-{ 
-  adc_value = ADCH;
-}
+ISR(ADC_vect) { // Analog->Digital Conversion Complete
+  if ((ADMUX & B00000111) == 6) { // Channel 6:
+    adc_value = ADCH;  // store ADC result (8-bir precision)
+    ADCSRA |= B11000000;  // manually trigger the next ADC
+    sample_count++;
+    if (adc_value > signal_max)
+      signal_max = adc_value;
+    else if (adc_value < signal_min)
+      signal_min = adc_value;
+    if (sample_count == 1000) {
+      adc_amplitude = signal_max - signal_min;
+      voltage = (adc_amplitude * 3.3) / 256;
+      
+      signal_min = 255;
+      signal_max = 0;
+      sample_count = 0;
+    }
+  }
+};
