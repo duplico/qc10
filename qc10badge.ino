@@ -16,11 +16,8 @@
 // lfuse: 0xBF
 // hfuse: 0xDE
 
-// TODO: Uber badge counts aren't loading.
 // TODO: Communication difficulties.
 // TODO: Battery issues.
-// TODO: Still a lag between identifyign a new badge and doing the nearbadge amimation.
-
 
 #include <JeeLib.h>
 #include <avr/eeprom.h>
