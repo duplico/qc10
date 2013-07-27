@@ -186,9 +186,6 @@ static void loadConfig() {
         if (config.badge_id < UBER_COUNT)
           uber_badges_seen++;
     }
-    else {
-      loadBadges();
-    }
 
     // Store the parts of our config that rarely change in the outgoing payload.
     out_payload.from_id = config.badge_id;
@@ -239,7 +236,7 @@ static boolean just_saw_badge(uint16_t badge_id) {
   }
   total_badges_seen++;
   // TODO:
-  // saveBadge(badge_id);
+  saveBadge(badge_id);
   return true;
 }
 
@@ -258,10 +255,10 @@ void setup () {
     Serial.begin(57600);
     Serial.println(57600);
 #else
-//    randomSeed(analogRead(0)); // For randomly choosing blings
+    randomSeed(analogRead(0)); // For randomly choosing blings
 #endif
+    loadBadges();
     loadConfig();
-    //loadBadges();
     last_time = millis();
     current_time = millis();
 #if USE_LEDS
@@ -270,6 +267,11 @@ void setup () {
     if (1) { // uber
       set_ring_lights_animation(SUPERUBER_INDEX, LOOP_FALSE, CROSSFADING, DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
     }
+    
+    // TODO: set party flasher according to my ID.
+    // TODO: epilepsy warning.
+    // heartbeats[PARTY_INDEX][0][0..2]
+    
 #endif
   setupAdc();
 }
@@ -716,7 +718,7 @@ void loop () {
     window_position = (window_position + 1) % RECEIVE_WINDOW;
     neighbor_counts[window_position] = 0;
 #if USE_LEDS
-    set_gaydar_state(neighbor_count, last_neighbor_count);
+    set_gaydar_state(neighbor_count, last_neighbor_count); // TODO: this is still happening inappropriately.
 #else
     Serial.print("--|Update: ");
     Serial.print(neighbor_count);
