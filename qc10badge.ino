@@ -316,7 +316,8 @@ void set_heartbeat(uint8_t target_sys) {
     }
     */
     // This is handled in the loop code now.
-    current_sys = target_sys;
+    if (!party_mode)
+      current_sys = target_sys;
   //}
 }
 
@@ -486,13 +487,6 @@ void do_volume_detect(uint32_t elapsed_time) {
 }
 
 void do_ring_update() { //uint32_t elapsed_time, uint32_t current_time) {
-  // Just the animation loop:
-  if (led_ring_animating && current_time >= led_next_ring) { // TODO: ISRs
-    led_next_ring = ring_lights_update_loop() + current_time;
-  }
-  if (current_time >= led_next_uber_fade) {
-    led_next_uber_fade = uber_ring_fade() + current_time;
-  }
   
   // Determine whether we should turn on idle
   // TODO: Interrupt idle upon leaving preboot
@@ -581,6 +575,14 @@ void do_ring_update() { //uint32_t elapsed_time, uint32_t current_time) {
     // TODO: WTF did I mean by the above?
     idling = 0;
   }
+  
+  // Just the animation loop:
+  if (led_ring_animating && current_time >= led_next_ring) { // TODO: ISRs
+    led_next_ring = ring_lights_update_loop() + current_time;
+  }
+  if (current_time >= led_next_uber_fade) {
+    led_next_uber_fade = uber_ring_fade() + current_time;
+  }
 }
 
 void do_sys_update() {
@@ -651,12 +653,8 @@ void loop () {
   current_time = millis();
   elapsed_time = current_time - last_time;
   last_time = current_time;
-  
   do_volume_detect(elapsed_time);
-  
   t += elapsed_time;
-  
-  
   if (!in_preboot)
     time_since_last_bling += elapsed_time;
   
@@ -791,7 +789,7 @@ void loop () {
     window_position = (window_position + 1) % RECEIVE_WINDOW;
     neighbor_counts[window_position] = 0;
 #if USE_LEDS
-    set_gaydar_state(neighbor_count); // TODO: this is still happening inappropriately.
+    set_gaydar_state(neighbor_count); // TODO: Is this still happening inappropriately?
 #else
     Serial.print("--|Update: ");
     Serial.print(neighbor_count);
