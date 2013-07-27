@@ -30,7 +30,7 @@ extern "C"
 // General (overall system) configuration
 #define UBER_COUNT 10
 #define CONFIG_STRUCT_VERSION 15
-#define STARTING_ID 1
+#define STARTING_ID 0
 #define BADGES_IN_SYSTEM 105
 #define BADGE_METER_INTERVAL 6
 #define BADGE_FRIENDLY_CUTOFF 60
