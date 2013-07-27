@@ -478,46 +478,57 @@ void do_volume_detect(uint32_t elapsed_time) {
   }
 }
 
-void do_leds(uint32_t elapsed_time) {
-  
-}
-
-void loop () {
-  wdt_reset();
-  current_time = millis();
-  elapsed_time = current_time - last_time;
-  last_time = current_time;
-  
-  do_volume_detect(elapsed_time);
-  
-  t += elapsed_time;
-  
-  
-  if (!in_preboot)
-    time_since_last_bling += elapsed_time;
-  
-#if USE_LEDS
-//// ALWAYS:
-  if (!led_ring_animating && !idling) {
-    idling = 1;
-    just_became_idle = 1;
-  }
-  if (led_ring_animating && current_time >= led_next_ring) {
+void do_ring_update() { //uint32_t elapsed_time, uint32_t current_time) {
+  // Just the animation loop:
+  if (led_ring_animating && current_time >= led_next_ring) { // TODO: ISRs
     led_next_ring = ring_lights_update_loop() + current_time;
   }
-  if (led_sys_animating && current_time >= led_next_sys) {
-    led_next_sys = system_lights_update_loop() + current_time;
+  if (current_time >= led_next_uber_fade) {
+    led_next_uber_fade = uber_ring_fade() + current_time;
   }
+  
+  // Determine whether we should turn off idle
+  if (!led_ring_animating && !idling) {
+    idling = 1;
+    just_became_idle = 1; // Happens at end of animation, always.
+  }
+  
+  // Badge count:
+  //  Non-preemptive (except idle)
+  // Happens either:
+  //  (a) in preboot (flagged at boot)
+  //  (b) due to radio action (only way to activate flag)
   if (idling && need_to_show_badge_count) {
     idling = 0;
     need_to_show_badge_count = 0;
     show_badge_count();
   }
+  
+  // Uber count:
+  //  Non-preemptive (except idle)
+  // Happens either:
+  //  (a) in preboot (flagged at boot)
+  //  (b) due to radio action (only way to activate flag)
   if (idling && need_to_show_uber_count) {
     idling = 0;
     need_to_show_uber_count = 0;
     show_uber_count();
   }
+}
+
+void do_sys_update() {
+  if (led_sys_animating && current_time >= led_next_sys) {
+    led_next_sys = system_lights_update_loop() + current_time;
+  }
+}
+
+void do_led_control(uint32_t elapsed_time) {
+  
+  do_ring_update();
+  do_sys_update();
+  
+  // This is more of the gaydar system:
+  //// ALWAYS:
 //// PREBOOT ONLY:
   // Enter preboot idle state (meaning blank the ring)
   // This needs to be the last thing before "time to leave preboot."
@@ -552,9 +563,6 @@ void loop () {
     led_next_sys = set_system_lights_animation(SYSTEM_NEWBADGE_INDEX, LOOP_TRUE, 0);
     // Pre-empt the near badge animation.
     need_to_show_near_badge = 0;
-  }
-  if (current_time >= led_next_uber_fade) {
-    led_next_uber_fade = uber_ring_fade() + current_time;
   }
   
  ///// PARTY MODE:
@@ -634,7 +642,25 @@ void loop () {
       idling = 0;
     }
   } // non-party mode
-#endif
+}
+
+void loop () {
+  wdt_reset();
+  current_time = millis();
+  elapsed_time = current_time - last_time;
+  last_time = current_time;
+  
+  do_volume_detect(elapsed_time);
+  
+  t += elapsed_time;
+  
+  
+  if (!in_preboot)
+    time_since_last_bling += elapsed_time;
+  
+  #if USE_LEDS
+    do_led_control(elapsed_time);
+  #endif
   
   //////// RADIO SECTION /////////
   // Radio duty cycle.
