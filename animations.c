@@ -59,7 +59,7 @@ QCSys heartbeats[][4] = {
    {24, 24, 24, 0, 90},
    {0, 0, 0, 0, 90}},
    
-  {{24, 24, 24, 0, 10}, // SPECIAL: XMIT 9
+  {{96, 96, 96, 0, 10}, // SPECIAL: PARTY 9
    {0, 0, 0, 0, 90},
    {0, 0, 0, 0, 0},
    {0, 0, 0, 0, 0}},
@@ -2369,7 +2369,7 @@ uint8_t ring_anim_lengths[] = {BLING1LEN, BLING2LEN, BLING3LEN, BLING4LEN, BLING
                                UBER1LEN, UBER2LEN, UBER3LEN, UBER4LEN, UBER5LEN,
                                UBER6LEN, UBER7LEN, UBER8LEN, UBER9LEN, UBER10LEN,
                                NEWBADGELEN, NEARBADGELEN, BADGECOUNTLEN, SUPERUBERLEN,
-                               UBERCOUNTLEN, BLANKLEN, BLANK2RING};
+                               UBERCOUNTLEN, BLANKLEN, BLANK2LEN};
 
 // For blinking:
 QCRing qcr_blinky_short = {

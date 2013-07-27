@@ -103,7 +103,7 @@ unsigned long led_next_sys = 0;
 uint8_t idling = 1;
 uint8_t just_became_idle = 0;
 uint16_t party_time = 0;
-uint8_t party_mode = 1;
+uint8_t party_mode = 0;
 uint8_t need_to_show_near_badge = 0;
 uint8_t need_to_show_new_badge = 0;
 uint8_t need_to_show_uber_count = 1;
@@ -347,13 +347,22 @@ uint16_t volume_time_since = 0;
 uint8_t volume_peaking = 0;
 uint8_t volume_peaking_last = 0;
 #define VOLUME_INTERVAL 2000
+#define PEAKS_TO_PARTY 20
+#define PARTY_PEAKS_INTERVAL 2000
+#define PARTY_TIME 10000
+uint16_t peak_interval_time = 0;
+uint8_t num_peaks = 0;
 
 void loop () {
   current_time = millis();
   elapsed_time = current_time - last_time;
   last_time = current_time;
   volume_time_since += elapsed_time;
-  
+  peak_interval_time += elapsed_time;
+  if (peak_interval_time > PARTY_PEAKS_INTERVAL) {
+    num_peaks = 0;
+    peak_interval_time = 0;
+  }
   ///////////////////////
   // AUDIO PEAK DETECTION
   ///////////////////////
@@ -382,7 +391,28 @@ void loop () {
     Serial.print(" vs avg ");
     Serial.println(volume_avg);
   }
-#endif  
+#endif
+
+  // Determine whether we should turn on party mode:
+  if (!in_preboot && volume_peaking && !volume_peaking_last && !party_mode) {
+    num_peaks++;
+    if (num_peaks > PEAKS_TO_PARTY) {
+      party_mode = 1;
+      party_time = PARTY_TIME;
+      idling = 1;
+      just_became_idle = 1;
+    }
+  }
+  if (party_mode && party_time <= elapsed_time) {
+    party_mode = 0;
+    party_time = 0;
+    idling = 1;
+    just_became_idle = 1;
+  }
+  else if (party_mode) {
+    party_time -= elapsed_time;
+  }
+  
   if (!in_preboot)
     time_since_last_bling += elapsed_time;
   
@@ -417,13 +447,12 @@ void loop () {
                                               CROSSFADE_FALSE, 0, 0, 
                                               UBERFADE_FALSE);
   }
-  if (in_preboot && idling) {
+  if (in_preboot && idling) { // TODO: This doesn't seem to work.
       if (volume_peaking && !volume_peaking_last) {
         // We've detected a new beat.
         set_system_lights_animation(11, LOOP_FALSE, 0); // TODO
       }
   }
-  // TODO: In preboot, following all our other behaviors, be audio
 //// TIME TO LEAVE PREBOOT:
   if (in_preboot && current_time > PREBOOT_INTERVAL) {
     in_preboot = 0;
@@ -453,7 +482,6 @@ void loop () {
   // showing a "new badge" animation. So if we're idling, we can do the
   // sound response.
   if (party_mode) {
-    // TODO: party mode count down.
     if (idling) {
       if (volume_peaking && !volume_peaking_last) {
         // We've detected a new beat.
@@ -616,6 +644,7 @@ void loop () {
               neighbor_count = neighbor_counts[window_position];
             }
             lowest_badge_this_cycle = min(in_payload.from_id, lowest_badge_this_cycle);
+            // TODO: check party time, using a similar authority construct.
             if (in_payload.authority < my_authority || (in_payload.authority == my_authority && in_payload.from_id < config.badge_id)) {
             #if !(USE_LEDS)
               Serial.print("|--Detected a higher authority ");
@@ -649,6 +678,7 @@ void loop () {
       #endif
       out_payload.authority = my_authority;
       out_payload.cycle_number = cycle_number;
+      out_payload.party = party_time;
       out_payload.timestamp = t;
       if (rf12_canSend()) {
         sent_this_cycle = true;
