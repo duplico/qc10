@@ -209,7 +209,7 @@ static void saveBadge(uint16_t badge_id) {
 }
 
 static void loadBadges() {
-  for (byte i = 0; i < BADGES_IN_SYSTEM; i++)
+  for (byte i = 0; i < BADGES_IN_SYSTEM; i++) {
     badges_seen[i] = eeprom_read_byte((byte*) (i + sizeof config));
     uint8_t badge_id;
     for (badge_id=0; badge_id<BADGES_IN_SYSTEM; badge_id++) {
@@ -218,6 +218,7 @@ static void loadBadges() {
         uber_badges_seen += (uint8_t)has_seen_badge(badge_id);
       }
     }
+  }
 }
 
 static boolean has_seen_badge(uint16_t badge_id) {
