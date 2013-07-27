@@ -29,8 +29,8 @@ extern "C"
 
 // General (overall system) configuration
 #define UBER_COUNT 10
-#define CONFIG_STRUCT_VERSION 14
-#define STARTING_ID 2
+#define CONFIG_STRUCT_VERSION 15
+#define STARTING_ID 1
 #define BADGES_IN_SYSTEM 105
 #define BADGE_METER_INTERVAL 6
 #define BADGE_FRIENDLY_CUTOFF 60
@@ -419,7 +419,6 @@ void loop () {
   if (!in_preboot && volume_peaking && !volume_peaking_last && !party_mode) {
     num_peaks++;
     if (num_peaks > PEAKS_TO_PARTY) { // PARTY TIME!
-      // TODO: Party time += time until we send a message.
       if (t_to_send >= t)  { // Current cycle's time to send is in the future
         party_time = PARTY_TIME + (t_to_send - t);
       } else { // We send next cycle
@@ -474,7 +473,7 @@ void loop () {
                                               CROSSFADE_FALSE, 0, 0, 
                                               UBERFADE_FALSE);
   }
-  if (in_preboot && idling) { // TODO: This doesn't seem to work.
+  if (in_preboot && idling) {
       if (volume_peaking && !volume_peaking_last) {
         // We've detected a new beat.
         led_next_sys = set_system_lights_animation(11, LOOP_FALSE, 0);
@@ -528,7 +527,7 @@ void loop () {
       just_became_idle = 0;
       if (need_to_show_new_badge == 2) {
         need_to_show_new_badge = 0;
-        led_next_sys = set_system_lights_animation(BLANK_INDEX, LOOP_FALSE, 0); // TODO
+        led_next_sys = set_system_lights_animation(BLANK_INDEX, LOOP_FALSE, 0);
       }
       // TODO: turn on whatever idle ring animation happens in party mode.
       led_next_ring = set_ring_lights_animation(BLANK_INDEX, LOOP_FALSE, 
@@ -644,8 +643,8 @@ void loop () {
             if (neighbor_counts[window_position] > last_neighbor_count) {
               set_gaydar_state(neighbor_counts[window_position], 
                                last_neighbor_count);
-              last_neighbor_count = neighbor_count;
               neighbor_count = neighbor_counts[window_position];
+              last_neighbor_count = neighbor_count;
             }
             lowest_badge_this_cycle = min(in_payload.from_id, lowest_badge_this_cycle);
             if (in_payload.authority < UBER_COUNT) { // TODO: in_payload.authority <= my_authority || ?????
