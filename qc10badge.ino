@@ -30,7 +30,7 @@ extern "C"
 // General (overall system) configuration
 #define UBER_COUNT 10
 #define CONFIG_STRUCT_VERSION 15
-#define STARTING_ID 0
+#define STARTING_ID 15
 #define BADGES_IN_SYSTEM 105
 #define BADGE_METER_INTERVAL 6
 #define BADGE_FRIENDLY_CUTOFF 60
@@ -291,25 +291,25 @@ void set_gaydar_state(uint16_t cur_neighbor_count, uint16_t last_neighbor_count)
   }
   if (cur_neighbor_count == 0) {
     set_heartbeat(0);
-    seconds_between_blings = 25;
+    seconds_between_blings = 60;
   } else if (cur_neighbor_count == 1) {
     set_heartbeat(1);
-    seconds_between_blings = 21;
+    seconds_between_blings = 45;
   } else if (cur_neighbor_count <= 3) {
     set_heartbeat(2);
-    seconds_between_blings = 17;
+    seconds_between_blings = 35;
   } else if (cur_neighbor_count <= 8) {
     set_heartbeat(3);
-    seconds_between_blings = 10;
+    seconds_between_blings = 27;
   } else if (cur_neighbor_count <= 15) {
     set_heartbeat(4);
-    seconds_between_blings = 8;
+    seconds_between_blings = 20;
   } else if (cur_neighbor_count <= 23) {
     set_heartbeat(5);
-    seconds_between_blings = 7;
+    seconds_between_blings = 15;
   } else {
     set_heartbeat(6);
-    seconds_between_blings = 6;
+    seconds_between_blings = 8;
   }
 }
 
@@ -565,6 +565,10 @@ void loop () {
         led_next_ring = set_ring_lights_animation(UBER_START_INDEX + config.badge_id, 
                                                   LOOP_TRUE, CROSSFADING,
                                                   DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
+      } else {
+        led_next_ring = set_ring_lights_animation(BLANK_INDEX, LOOP_FALSE, 
+                                                  CROSSFADE_FALSE, 0, 0, 
+                                                  UBERFADE_FALSE);
       }
       if (need_to_show_new_badge == 2) {
         // Just finished a new badge animation so I need to reset the syslight
