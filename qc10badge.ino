@@ -25,6 +25,7 @@
 #include <JeeLib.h>
 #include <avr/eeprom.h>
 #include <avr/pgmspace.h>
+#include <avr/wdt.h>
 
 extern "C"
 {
@@ -258,6 +259,7 @@ static void saveConfig() {
 }
 
 void setup () {
+    wdt_enable(WDTO_1S);
 #if !(USE_LEDS)
     Serial.begin(57600);
     Serial.println(57600);
@@ -374,6 +376,7 @@ void enter_party_mode(uint16_t duration) {
 }
 
 void loop () {
+  wdt_reset();
   current_time = millis();
   elapsed_time = current_time - last_time;
   last_time = current_time;
