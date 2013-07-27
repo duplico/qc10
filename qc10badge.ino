@@ -359,6 +359,28 @@ void loop () {
   last_time = current_time;
   volume_time_since += elapsed_time;
   peak_interval_time += elapsed_time;
+  
+  // Some radio values:
+  // millisecond clock in the current sleep cycle:
+  static uint16_t t = 0;
+  // number of the current sleep cycle:
+  static uint16_t cycle_number = 0;
+  // whether we've successfully beaconed this cycle:
+  static boolean sent_this_cycle = false;
+  // at what t should we start trying to beacon:
+  static uint16_t t_to_send = config.r_sleep_duration + (config.r_listen_wake_pad / 2) + 
+    ((config.r_listen_duration - config.r_listen_wake_pad) / config.badges_in_system) * config.badge_id;
+  // my "authority", lower is more authoritative
+  static uint16_t my_authority = config.badge_id;
+  // lowest badge id I've seen this cycle, used to calculate my next initial authority
+  // (my authority is the lowest badge to whom I can directly communicate; if one
+  //  of my neighbors is communicating directly with a lower id badge than I am,
+  //  that neighbor will be more authoritative than me.):
+  // whether the radio is asleep:
+  static uint16_t lowest_badge_this_cycle = config.badge_id;
+  static boolean badge_is_sleeping = false;
+  t += elapsed_time;
+  
   if (peak_interval_time > PARTY_PEAKS_INTERVAL) {
     num_peaks = 0;
     peak_interval_time = 0;
@@ -396,9 +418,14 @@ void loop () {
   // Determine whether we should turn on party mode:
   if (!in_preboot && volume_peaking && !volume_peaking_last && !party_mode) {
     num_peaks++;
-    if (num_peaks > PEAKS_TO_PARTY) {
+    if (num_peaks > PEAKS_TO_PARTY) { // PARTY TIME!
+      // TODO: Party time += time until we send a message.
+      if (t_to_send >= t)  { // Current cycle's time to send is in the future
+        party_time = PARTY_TIME + (t_to_send - t);
+      } else { // We send next cycle
+        party_time = PARTY_TIME + config.r_sleep_duration + config.r_listen_duration - t + t_to_send;
+      }
       party_mode = 1;
-      party_time = PARTY_TIME;
       idling = 1;
       just_became_idle = 1;
     }
@@ -450,7 +477,7 @@ void loop () {
   if (in_preboot && idling) { // TODO: This doesn't seem to work.
       if (volume_peaking && !volume_peaking_last) {
         // We've detected a new beat.
-        set_system_lights_animation(11, LOOP_FALSE, 0); // TODO
+        led_next_sys = set_system_lights_animation(11, LOOP_FALSE, 0);
       }
   }
 //// TIME TO LEAVE PREBOOT:
@@ -485,7 +512,7 @@ void loop () {
     if (idling) {
       if (volume_peaking && !volume_peaking_last) {
         // We've detected a new beat.
-        led_next_sys = set_system_lights_animation(9, LOOP_FALSE, 0); // TODO
+        led_next_sys = set_system_lights_animation(PARTY_INDEX, LOOP_FALSE, 0);
       }
     }
     if (need_to_show_badge_count)
@@ -555,28 +582,6 @@ void loop () {
 #endif
   
   //////// RADIO SECTION /////////
-  
-  // millisecond clock in the current sleep cycle:
-  static uint16_t t = 0;
-  // number of the current sleep cycle:
-  static uint16_t cycle_number = 0;
-  // whether we've successfully beaconed this cycle:
-  static boolean sent_this_cycle = false;
-  // at what t should we start trying to beacon:
-  static uint16_t t_to_send = config.r_sleep_duration + (config.r_listen_wake_pad / 2) + 
-    ((config.r_listen_duration - config.r_listen_wake_pad) / config.badges_in_system) * config.badge_id;
-  // my "authority", lower is more authoritative
-  static uint16_t my_authority = config.badge_id;
-  // lowest badge id I've seen this cycle, used to calculate my next initial authority
-  // (my authority is the lowest badge to whom I can directly communicate; if one
-  //  of my neighbors is communicating directly with a lower id badge than I am,
-  //  that neighbor will be more authoritative than me.):
-  // whether the radio is asleep:
-  static uint16_t lowest_badge_this_cycle = config.badge_id;
-  static boolean badge_is_sleeping = false;
-  t += elapsed_time;
-  
-
   // Radio duty cycle.
   if (cycle_number != 1 && t < config.r_sleep_duration) {
     // Radio sleeps unless we're in the last sleep cycle of an interval
@@ -616,7 +621,6 @@ void loop () {
     if (rf12_recvDone() && rf12_crc == 0) {
       // We've received something. Is it valid?
       if (rf12_len == sizeof in_payload) {
-          // TODO: confirm correct version.
           in_payload = *(qcbpayload *)rf12_data;
           if (in_payload.from_id < BADGES_IN_SYSTEM) {            
             #if !(USE_LEDS)
@@ -631,7 +635,7 @@ void loop () {
             // Increment our beacon count in the current position in our
             // sliding window.
             neighbor_counts[window_position]+=1;
-            led_next_sys = set_system_lights_animation(10, LOOP_FALSE, 0); // TODO
+            led_next_sys = set_system_lights_animation(10, LOOP_FALSE, 0); // TODO: don't do this.
             // See if this is a new friend:
             if (just_saw_badge(in_payload.from_id)) {
               need_to_show_new_badge = 1;
@@ -644,7 +648,12 @@ void loop () {
               neighbor_count = neighbor_counts[window_position];
             }
             lowest_badge_this_cycle = min(in_payload.from_id, lowest_badge_this_cycle);
-            // TODO: check party time, using a similar authority construct.
+            if (in_payload.authority < UBER_COUNT) { // TODO: in_payload.authority <= my_authority || ?????
+              if (in_payload.party != 0) {
+                party_mode = 1;
+                party_time = in_payload.party;
+              }
+            }
             if (in_payload.authority < my_authority || (in_payload.authority == my_authority && in_payload.from_id < config.badge_id)) {
             #if !(USE_LEDS)
               Serial.print("|--Detected a higher authority ");
@@ -658,9 +667,6 @@ void loop () {
             #endif
             my_authority = in_payload.authority;
             cycle_number = in_payload.cycle_number;
-            if (in_payload.timestamp < t_to_send) {
-              sent_this_cycle = false;
-            }
             t = in_payload.timestamp;
           }
         } // ID check

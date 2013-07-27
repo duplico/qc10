@@ -79,3 +79,4 @@ extern QCRing qcr_ubercount_blinky;
 
 #define SYSTEM_PREBOOT_INDEX 7
 #define SYSTEM_NEWBADGE_INDEX 8
+#define PARTY_INDEX 9
