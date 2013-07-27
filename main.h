@@ -211,6 +211,7 @@ uint16_t uber_ring_fade();
 void startTLC();
 extern uint8_t led_ring_animating;
 extern uint8_t led_sys_animating;
+extern uint8_t led_sys_animation;
 extern volatile uint8_t adc_amplitude;
 extern volatile float voltage;
 extern volatile uint8_t new_amplitude_available;

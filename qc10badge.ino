@@ -106,7 +106,7 @@ unsigned long led_next_ring = 0;
 unsigned long led_next_uber_fade = 0;
 unsigned long led_next_sys = 0;
 uint8_t idling = 1;
-uint8_t just_became_idle = 0;
+uint8_t force_idle = 0;
 uint16_t party_time = 0;
 uint8_t party_mode = 0;
 uint8_t need_to_show_near_badge = 0;
@@ -302,19 +302,22 @@ void setup () {
     
     // TODO: set party flasher according to my ID.
     // TODO: epilepsy warning.
-    // heartbeats[PARTY_INDEX][0][0..2]
+    // heartbeats[SYSTEM_PARTY_INDEX][0][0..2]
     
 #endif
   setupAdc();
 }
 
 void set_heartbeat(uint8_t target_sys) {
+/*
   if (target_sys != current_sys) {
-    if (need_to_show_new_badge < 2 && !party_mode) {
+    if (!party_mode && led_sys_animating) {
       led_next_sys = set_system_lights_animation(target_sys, LOOP_TRUE, 0);
     }
+    */
+    // This is handled in the loop code now.
     current_sys = target_sys;
-  }
+  //}
 }
 
 void set_gaydar_state(uint16_t cur_neighbor_count) {
@@ -396,9 +399,16 @@ uint8_t num_peaks = 0;
 
 void enter_party_mode(uint16_t duration) {
   party_mode = 1;
-  idling = 1;
-  just_became_idle = 1;
+  force_idle = 1;
   party_time = duration;
+  current_sys = SYSTEM_BLANK_INDEX; // Blank the system lights.
+}
+
+void leave_party_mode() {
+  party_mode = 0;
+  party_time = 0;
+  force_idle = 1;
+  set_gaydar_state(neighbor_count);
 }
 
 // Run at VOLUME_INTERVAL:
@@ -468,10 +478,7 @@ void do_volume_detect(uint32_t elapsed_time) {
   // If we're in party mode, decrement the party timer.
   // Then determine whether we should turn off party mode:
   if (party_mode && party_time <= elapsed_time) {
-    party_mode = 0;
-    party_time = 0;
-    idling = 1;
-    just_became_idle = 1;
+    leave_party_mode();
   }
   else if (party_mode) {
     party_time -= elapsed_time;
@@ -487,10 +494,26 @@ void do_ring_update() { //uint32_t elapsed_time, uint32_t current_time) {
     led_next_uber_fade = uber_ring_fade() + current_time;
   }
   
-  // Determine whether we should turn off idle
-  if (!led_ring_animating && !idling) {
+  // Determine whether we should turn on idle
+  // TODO: Interrupt idle upon leaving preboot
+  // force_idle allows us to force a re-up of our idle state.
+  if (force_idle || (!led_ring_animating && !idling)) {
     idling = 1;
-    just_became_idle = 1; // Happens at end of animation, always.
+    force_idle = 0; // Happens at end of animation, always.
+    time_since_last_bling = 0; // All ring animations should delay blings.
+    // We just became idle, so we blank the ring if we're non-superuber
+    //  or if we're uber and in party mode, or if we're in preboot.
+    //  and if we're uber and not in party mode, we do an uber idle.
+    if (AM_SUPERUBER && !party_mode && !in_preboot) {
+      led_next_ring = set_ring_lights_animation(UBER_START_INDEX + config.badge_id, 
+                                                LOOP_TRUE, CROSSFADING,
+                                                DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
+    }
+    else {
+      led_next_ring = set_ring_lights_animation(BLANK_INDEX, LOOP_TRUE, 
+                                                CROSSFADE_FALSE, 0, 0, 
+                                                UBERFADE_FALSE);
+    }
   }
   
   // Badge count:
@@ -514,11 +537,75 @@ void do_ring_update() { //uint32_t elapsed_time, uint32_t current_time) {
     need_to_show_uber_count = 0;
     show_uber_count();
   }
+  
+  // New badge:
+  //  Preemptive.
+  // Happens ONLY due to radio action (can't even be triggered in preboot, when radio is off):
+  if (need_to_show_new_badge) {
+    idling = 0;
+    need_to_show_new_badge = 0;
+    led_next_ring = set_ring_lights_animation(NEWBADGE_INDEX, LOOP_FALSE, CROSSFADE_FALSE, 
+                                              DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
+    led_next_sys = set_system_lights_animation(SYSTEM_NEWBADGE_INDEX, LOOP_TRUE, 0); // TODO
+    // Pre-empt the near badge animation.
+    need_to_show_near_badge = 0;
+  }
+  
+  // Near badge:
+  //  Happens if we were lonely (no neighbors) and now I have 1+ neighbors.
+  //  Preemptive.
+  // Happens ONLY due to radio action (can't even be triggered in preboot, when radio is off):
+  if (need_to_show_near_badge) {
+    idling = 0;
+    force_idle = 0; // Don't permit idle interruptions of this.
+    need_to_show_near_badge = 0;
+    led_next_ring = set_ring_lights_animation(NEARBADGE_INDEX, LOOP_FALSE, CROSSFADE_FALSE, 
+                                              DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
+  }
+  
+  // Bling:
+  //  Happens occasionally.
+  //  Non-preemptive (except idle)
+  // Happens due to the passage of time.
+  // Cannot be triggered in preboot, because in preboot, 
+  //  time_since_last_bling doesn't increment.
+  if (idling && (time_since_last_bling > seconds_between_blings * 1000)) {
+    // Time to do a "bling":
+    current_bling = random(BLING_START_INDEX, 
+                           BLING_START_INDEX + BLING_COUNT + (AM_FRIENDLY ? UBLING_COUNT : 0));
+    
+    led_next_ring = set_ring_lights_animation(BLING_START_INDEX + current_bling, LOOP_FALSE, 
+                                              CROSSFADING, 
+                                              DEFAULT_CROSSFADE_STEP, 0, AM_SUPERUBER);
+    time_since_last_bling = 0; // With longer times, maybe not clear this?
+    // TODO: WTF did I mean by the above?
+    idling = 0;
+  }
 }
 
 void do_sys_update() {
+  // TODO: ISR
   if (led_sys_animating && current_time >= led_next_sys) {
     led_next_sys = system_lights_update_loop() + current_time;
+  }
+  
+  // Happens many times, only in preboot:
+  if (in_preboot && idling) {
+      if (AUDIO_SPIKE) {
+        // We've detected a new beat.
+        led_next_sys = set_system_lights_animation(11, LOOP_FALSE, 0);
+      }
+  }
+  // If we're booted and either (a) not showing an animation or
+  //   (b) just finished the newbadge animation.
+  //   go back to heartbeat and/or blank-for-party.
+  if (!in_preboot && 
+      (!led_sys_animating || 
+       (idling && led_sys_animation != current_sys))) { /*
+       (led_sys_animation == SYSTEM_NEWBADGE_INDEX && idling) ||
+       (led_sys_animation != current_sys)) { */ //??????
+    // Go back to heartbeating (or blank in party mode)
+    led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
   }
 }
 
@@ -527,53 +614,27 @@ void do_led_control(uint32_t elapsed_time) {
   do_ring_update();
   do_sys_update();
   
-  // This is more of the gaydar system:
-  //// ALWAYS:
-//// PREBOOT ONLY:
-  // Enter preboot idle state (meaning blank the ring)
-  // This needs to be the last thing before "time to leave preboot."
-  if (in_preboot && idling && just_became_idle) {
-    just_became_idle = 0;
-    led_next_ring = set_ring_lights_animation(BLANK_INDEX, LOOP_FALSE, 
-                                              CROSSFADE_FALSE, 0, 0, 
-                                              UBERFADE_FALSE);
-  }
-  if (in_preboot && idling) {
-      if (AUDIO_SPIKE) {
-        // We've detected a new beat.
-        led_next_sys = set_system_lights_animation(11, LOOP_FALSE, 0);
-      }
-  }
-//// TIME TO LEAVE PREBOOT:
+  // If it's time to leave preboot:
   if (in_preboot && current_time > PREBOOT_INTERVAL) {
     in_preboot = 0;
-    led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
-    time_since_last_bling = 0;
-    idling = 1;
-    just_became_idle = 1;
+    force_idle = 1;
   }
+  
   if (in_preboot) return; // Don't look for other badges in preboot.
-//// ONLY AFTER BOOT:
-  //// ALWAYS:  
-  if (need_to_show_new_badge == 1) {
-    idling = 0;
-    need_to_show_new_badge = 2;
-    led_next_ring = set_ring_lights_animation(NEWBADGE_INDEX, LOOP_FALSE, CROSSFADE_FALSE, 
-                                              DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
-    led_next_sys = set_system_lights_animation(SYSTEM_NEWBADGE_INDEX, LOOP_TRUE, 0);
-    // Pre-empt the near badge animation.
-    need_to_show_near_badge = 0;
-  }
   
  ///// PARTY MODE:
   // The only way we can be NOT idling in party mode is to be
   // showing a "new badge" animation. So if we're idling, we can do the
   // sound response.
+  // Party mode happens due to ADC activity.
+  // TODO: set party mode from ADC ISR
+  // TODO: set light blinks from ADC ISR
+  // TODO: Enable/disable ADC ISR based upon party mode / ability to cause party mode
   if (party_mode) {
     if (idling) {
       if (AUDIO_SPIKE) {
         // We've detected a new beat.
-        led_next_sys = set_system_lights_animation(PARTY_INDEX, LOOP_FALSE, 0);
+        led_next_sys = set_system_lights_animation(SYSTEM_PARTY_INDEX, LOOP_FALSE, 0);
       }
     }
     if (need_to_show_badge_count)
@@ -582,66 +643,7 @@ void do_led_control(uint32_t elapsed_time) {
       need_to_show_uber_count = 0;
     if (need_to_show_near_badge) // Don't show the nearbadge animation please.
       need_to_show_near_badge = 0;
-    
-    // Newly idle:
-    if (idling && just_became_idle) {
-      just_became_idle = 0;
-      if (need_to_show_new_badge == 2) {
-        need_to_show_new_badge = 0;
-        led_next_sys = set_system_lights_animation(BLANK_INDEX, LOOP_FALSE, 0);
-      }
-      led_next_ring = set_ring_lights_animation(PARTYBLANK_INDEX, LOOP_FALSE, 
-                                                CROSSFADE_FALSE, 0, 0, 
-                                                UBERFADE_FALSE);
-    }
   }
-  else { ///// NORMAL OPERATIONS
-    if (!led_sys_animating)
-      led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
-    
-    if (need_to_show_near_badge && need_to_show_new_badge == 0) {
-      idling = 0;
-      just_became_idle = 0;
-      need_to_show_near_badge = 0;
-      led_next_ring = set_ring_lights_animation(NEARBADGE_INDEX, LOOP_FALSE, CROSSFADE_FALSE, 
-                                                DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
-    }
-    
-    // Newly idle
-    if (idling && just_became_idle) {
-      time_since_last_bling = 0;
-      just_became_idle = 0;
-      // Do normal behavior
-      if (AM_SUPERUBER) {
-        // Just finished an animation, so it's time for superubers to idle again.
-        led_next_ring = set_ring_lights_animation(UBER_START_INDEX + config.badge_id, 
-                                                  LOOP_TRUE, CROSSFADING,
-                                                  DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
-      } else {
-        led_next_ring = set_ring_lights_animation(BLANK_INDEX, LOOP_FALSE, 
-                                                  CROSSFADE_FALSE, 0, 0, 
-                                                  UBERFADE_FALSE);
-      }
-      if (need_to_show_new_badge == 2) {
-        // Just finished a new badge animation so I need to reset the syslight
-        // to heartbeat mode.
-        led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
-        need_to_show_new_badge = 0;
-      }
-    }
-    
-    if (idling && time_since_last_bling > seconds_between_blings * 1000) {
-      // Time to do a "bling":
-      current_bling = random(BLING_START_INDEX, 
-                             BLING_START_INDEX + BLING_COUNT + (AM_FRIENDLY ? UBLING_COUNT : 0));
-      
-      led_next_ring = set_ring_lights_animation(BLING_START_INDEX + current_bling, LOOP_FALSE, 
-                                                CROSSFADING, 
-                                                DEFAULT_CROSSFADE_STEP, 0, AM_SUPERUBER);
-      // time_since_last_bling = 0; // With longer times, maybe not clear this?
-      idling = 0;
-    }
-  } // non-party mode
 }
 
 void loop () {
