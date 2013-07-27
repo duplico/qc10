@@ -33,14 +33,15 @@ extern "C"
 
 // General (overall system) configuration
 #define UBER_COUNT 10
-#define CONFIG_STRUCT_VERSION 15
-#define STARTING_ID 15
+#define CONFIG_STRUCT_VERSION 16
+#define STARTING_ID 5
 #define BADGES_IN_SYSTEM 105
 #define BADGE_METER_INTERVAL 6
 #define BADGE_FRIENDLY_CUTOFF 60
 
 // Radio Configuration
-#define RECEIVE_WINDOW 8 // How many beacon cycles to look at together.
+// How many beacon cycles to look at together.
+#define RECEIVE_WINDOW 8 
 // NB: It's nice if the listen duration is divisible by BADGES_IN_SYSTEM 
 #define R_SLEEP_DURATION 8000
 #define R_LISTEN_DURATION 4410
@@ -113,6 +114,25 @@ uint8_t need_to_show_new_badge = 0;
 uint8_t need_to_show_uber_count = 1;
 uint8_t need_to_show_badge_count = 1;
 
+// Radio subsystem and duty cycling
+// millisecond clock in the current sleep cycle:
+uint16_t t = 0;
+// number of the current sleep cycle:
+uint16_t cycle_number = R_NUM_SLEEP_CYCLES - 1; // Stay awake to start.
+// whether we've successfully beaconed this cycle:
+uint8_t sent_this_cycle = 0;
+// at what t should we start trying to beacon:
+uint16_t t_to_send = R_SLEEP_DURATION;
+// my "authority", lower is more authoritative
+uint16_t my_authority = BADGES_IN_SYSTEM;
+// lowest badge id I've seen this cycle, used to calculate my next initial authority
+// (my authority is the lowest badge to whom I can directly communicate; if one
+//  of my neighbors is communicating directly with a lower id badge than I am,
+//  that neighbor will be more authoritative than me.):
+// whether the radio is asleep:
+uint16_t lowest_badge_this_cycle = BADGES_IN_SYSTEM;
+uint8_t badge_is_sleeping = 1;
+
 // Configuration settings struct, to be stored on the EEPROM.
 struct {
     uint8_t check;
@@ -163,42 +183,48 @@ static void showConfig() {
 
 // Load our configuration from EEPROM (also computing some payload).
 static void loadConfig() {
-    byte* p = (byte*) &config;
-    for (byte i = 0; i < sizeof config; ++i)
-        p[i] = eeprom_read_byte((byte*) i);
-    total_badges_seen = 0;
-    uber_badges_seen = 0;
-    // if loaded config is not valid, replace it with defaults
-    if (config.check != CONFIG_STRUCT_VERSION) {
-        config.check = CONFIG_STRUCT_VERSION;
-        config.freq = 4;
-        config.rcv_group = 211;
-        config.rcv_id = 1;
-        config.bcn_group = 211;
-        config.bcn_id = 1;
-        config.badge_id = STARTING_ID;
-        config.badges_in_system = BADGES_IN_SYSTEM;
-        config.r_sleep_duration = R_SLEEP_DURATION;
-        config.r_listen_duration = R_LISTEN_DURATION;
-        config.r_listen_wake_pad = R_LISTEN_WAKE_PAD;
-        config.r_num_sleep_cycles = R_NUM_SLEEP_CYCLES;
-        saveConfig();
-        
-        memset(badges_seen, 0, BADGES_IN_SYSTEM);
-        badges_seen[config.badge_id] = 1;
-        total_badges_seen++;
-        if (config.badge_id < UBER_COUNT)
-          uber_badges_seen++;
-    }
+  byte* p = (byte*) &config;
+  for (byte i = 0; i < sizeof config; ++i)
+      p[i] = eeprom_read_byte((byte*) i);
+  total_badges_seen = 0;
+  uber_badges_seen = 0;
+  // if loaded config is not valid, replace it with defaults
+  if (config.check != CONFIG_STRUCT_VERSION) {
+      config.check = CONFIG_STRUCT_VERSION;
+      config.freq = 4;
+      config.rcv_group = 211;
+      config.rcv_id = 1;
+      config.bcn_group = 211;
+      config.bcn_id = 1;
+      config.badge_id = STARTING_ID;
+      config.badges_in_system = BADGES_IN_SYSTEM;
+      config.r_sleep_duration = R_SLEEP_DURATION;
+      config.r_listen_duration = R_LISTEN_DURATION;
+      config.r_listen_wake_pad = R_LISTEN_WAKE_PAD;
+      config.r_num_sleep_cycles = R_NUM_SLEEP_CYCLES;
+      saveConfig();
+      
+      memset(badges_seen, 0, BADGES_IN_SYSTEM);
+      badges_seen[config.badge_id] = 1;
+      total_badges_seen++;
+      if (config.badge_id < UBER_COUNT)
+        uber_badges_seen++;
+  }
 
-    // Store the parts of our config that rarely change in the outgoing payload.
-    out_payload.from_id = config.badge_id;
-    out_payload.badges_in_system = config.badges_in_system;
-    out_payload.ver = config.check;
-    #if !(USE_LEDS)
+  // Store the parts of our config that rarely change in the outgoing payload.
+  out_payload.from_id = config.badge_id;
+  out_payload.badges_in_system = config.badges_in_system;
+  out_payload.ver = config.check;
+  #if !(USE_LEDS)
     showConfig();
-    #endif
-    rf12_initialize(config.rcv_id, code2type(config.freq), 1);
+  #endif
+  rf12_initialize(config.rcv_id, code2type(config.freq), 1);
+    
+  lowest_badge_this_cycle = config.badge_id;
+  my_authority = config.badge_id;
+  t_to_send = config.r_sleep_duration + (config.r_listen_wake_pad / 2) + 
+              ((config.r_listen_duration - config.r_listen_wake_pad) 
+               / config.badges_in_system) * config.badge_id;
 }
 
 static void saveBadge(uint16_t badge_id) {
@@ -376,7 +402,7 @@ void enter_party_mode(uint16_t duration) {
 }
 
 // Run at VOLUME_INTERVAL:
-void do_volume_detect(elapsed_time) {
+void do_volume_detect(uint32_t elapsed_time) {
   // Adjust timing state:
   volume_time_since += elapsed_time;
   peak_interval_time += elapsed_time;
@@ -396,14 +422,14 @@ void do_volume_detect(elapsed_time) {
     volume_sums = volume_avg;
     volume_samples = 1;
   }
+  volume_peaking_last = volume_peaking;
   // If our ADC ISR has generated a new sound sample,
   // add it to our running volume average counters.
   if (new_amplitude_available) {
     volume_sums += voltage;
     volume_samples++;
     // Then, if it's sufficiently larger than the average,
-    // set the volume peaking flag, storing the previous one.
-    volume_peaking_last = volume_peaking;
+    // set the volume peaking flag, having stored the previous one.
     if (voltage > volume_avg + VOLUME_THRESHOLD) {
       volume_peaking = 1;
     }
@@ -452,7 +478,7 @@ void do_volume_detect(elapsed_time) {
   }
 }
 
-void do_leds(elapsed_time) {
+void do_leds(uint32_t elapsed_time) {
   
 }
 
@@ -464,25 +490,6 @@ void loop () {
   
   do_volume_detect(elapsed_time);
   
-  // Some radio values:
-  // millisecond clock in the current sleep cycle:
-  static uint16_t t = 0;
-  // number of the current sleep cycle:
-  static uint16_t cycle_number = R_NUM_SLEEP_CYCLES - 1; // Stay awake to start.
-  // whether we've successfully beaconed this cycle:
-  static boolean sent_this_cycle = false;
-  // at what t should we start trying to beacon:
-  static uint16_t t_to_send = config.r_sleep_duration + (config.r_listen_wake_pad / 2) + 
-    ((config.r_listen_duration - config.r_listen_wake_pad) / config.badges_in_system) * config.badge_id;
-  // my "authority", lower is more authoritative
-  static uint16_t my_authority = config.badge_id;
-  // lowest badge id I've seen this cycle, used to calculate my next initial authority
-  // (my authority is the lowest badge to whom I can directly communicate; if one
-  //  of my neighbors is communicating directly with a lower id badge than I am,
-  //  that neighbor will be more authoritative than me.):
-  // whether the radio is asleep:
-  static uint16_t lowest_badge_this_cycle = config.badge_id;
-  static boolean badge_is_sleeping = false;
   t += elapsed_time;
   
   
