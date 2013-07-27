@@ -31,17 +31,17 @@ extern "C"
 #define UBER_COUNT 10
 #define CONFIG_STRUCT_VERSION 14
 #define STARTING_ID 2
-#define BADGES_IN_SYSTEM 120
+#define BADGES_IN_SYSTEM 105
 #define BADGE_METER_INTERVAL 6
 #define BADGE_FRIENDLY_CUTOFF 60
 
 // Radio Configuration
 #define RECEIVE_WINDOW 8 // How many beacon cycles to look at together.
 // NB: It's nice if the listen duration is divisible by BADGES_IN_SYSTEM 
-#define R_SLEEP_DURATION 5000
-#define R_LISTEN_DURATION 5000
-#define R_LISTEN_WAKE_PAD 1000
-#define R_NUM_SLEEP_CYCLES 6
+#define R_SLEEP_DURATION 8000
+#define R_LISTEN_DURATION 4410
+#define R_LISTEN_WAKE_PAD 200
+#define R_NUM_SLEEP_CYCLES 10
 
 // LED configuration
 #define USE_LEDS 1
@@ -103,7 +103,7 @@ unsigned long led_next_sys = 0;
 uint8_t idling = 1;
 uint8_t just_became_idle = 0;
 uint16_t party_time = 0;
-uint8_t party_mode = 0;
+uint8_t party_mode = 1;
 uint8_t need_to_show_near_badge = 0;
 uint8_t need_to_show_new_badge = 0;
 uint8_t need_to_show_uber_count = 1;
@@ -367,7 +367,7 @@ void loop () {
   if (new_amplitude_available) {
     volume_sums += voltage;
     volume_samples++;
-    if (voltage > volume_avg + .1) {
+    if (voltage > volume_avg + .03) {
       volume_peaking = 1;
     }
     else {
@@ -392,6 +392,12 @@ void loop () {
     idling = 1;
     just_became_idle = 1;
   }
+  if (led_ring_animating && current_time >= led_next_ring) {
+    led_next_ring = ring_lights_update_loop() + current_time;
+  }
+  if (led_sys_animating && current_time >= led_next_sys) {
+    led_next_sys = system_lights_update_loop() + current_time;
+  }
   if (idling && need_to_show_badge_count) {
     idling = 0;
     need_to_show_badge_count = 0;
@@ -402,12 +408,6 @@ void loop () {
     need_to_show_uber_count = 0;
     show_uber_count();
   }
-  if (led_ring_animating && current_time >= led_next_ring) {
-    led_next_ring = ring_lights_update_loop() + current_time;
-  }
-  if (led_sys_animating && current_time >= led_next_sys) {
-    led_next_sys = system_lights_update_loop() + current_time;
-  }
 //// PREBOOT ONLY:
   // Enter preboot idle state (meaning blank the ring)
   // This needs to be the last thing before "time to leave preboot."
@@ -417,21 +417,24 @@ void loop () {
                                               CROSSFADE_FALSE, 0, 0, 
                                               UBERFADE_FALSE);
   }
+  if (in_preboot && idling) {
+      if (volume_peaking && !volume_peaking_last) {
+        // We've detected a new beat.
+        set_system_lights_animation(11, LOOP_FALSE, 0); // TODO
+      }
+  }
+  // TODO: In preboot, following all our other behaviors, be audio
 //// TIME TO LEAVE PREBOOT:
   if (in_preboot && current_time > PREBOOT_INTERVAL) {
     in_preboot = 0;
     led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
     time_since_last_bling = 0;
+    idling = 1;
     just_became_idle = 1;
   }
   if (in_preboot) return; // Don't look for other badges in preboot.
 //// ONLY AFTER BOOT:
-  if (!led_sys_animating && !party_mode)
-    led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
-  else if (!led_sys_animating) {
-    // TODO: Do party mode LED thing.
-  }
-    
+  //// ALWAYS:  
   if (need_to_show_new_badge == 1) {
     idling = 0;
     need_to_show_new_badge = 2;
@@ -441,26 +444,60 @@ void loop () {
     // Pre-empt the near badge animation.
     need_to_show_near_badge = 0;
   }
-  if (need_to_show_near_badge && !party_mode && need_to_show_new_badge == 0) {
-    idling = 0;
-    just_became_idle = 0;
-    need_to_show_near_badge = 0;
-    led_next_ring = set_ring_lights_animation(NEARBADGE_INDEX, LOOP_FALSE, CROSSFADE_FALSE, 
-                                              DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
-  } else if (need_to_show_near_badge) {
-    need_to_show_near_badge = 0;
+  if (current_time >= led_next_uber_fade) {
+    led_next_uber_fade = uber_ring_fade() + current_time;
   }
-  if (idling && just_became_idle) {
-    time_since_last_bling = 0;
-    just_became_idle = 0;
-    if (party_mode) { // Do party mode behavior
-      if (need_to_show_new_badge == 2) {
-        // TODO: do party mode behavior for the system light
-        // Although I think this will ALWAYS be necessary when in party mode,
-        //  since this is the only thing that can interrupt party mode.
+  
+ ///// PARTY MODE:
+  // The only way we can be NOT idling in party mode is to be
+  // showing a "new badge" animation. So if we're idling, we can do the
+  // sound response.
+  if (party_mode) {
+    // TODO: party mode count down.
+    if (idling) {
+      if (volume_peaking && !volume_peaking_last) {
+        // We've detected a new beat.
+        led_next_sys = set_system_lights_animation(9, LOOP_FALSE, 0); // TODO
       }
     }
-    else { // Do normal behavior
+    if (need_to_show_badge_count)
+      need_to_show_badge_count = 0;
+    if (need_to_show_uber_count)
+      need_to_show_uber_count = 0;
+    if (need_to_show_near_badge) { // Don't show the nearbadge animation please.
+      need_to_show_near_badge = 0;
+    }
+    
+    // Newly idle:
+    if (idling && just_became_idle) {
+      just_became_idle = 0;
+      if (need_to_show_new_badge == 2) {
+        need_to_show_new_badge = 0;
+        led_next_sys = set_system_lights_animation(BLANK_INDEX, LOOP_FALSE, 0); // TODO
+      }
+      // TODO: turn on whatever idle ring animation happens in party mode.
+      led_next_ring = set_ring_lights_animation(BLANK_INDEX, LOOP_FALSE, 
+                                                CROSSFADE_FALSE, 0, 0, 
+                                                UBERFADE_FALSE);
+    }
+  }
+  else { ///// NORMAL OPERATIONS
+    if (!led_sys_animating)
+      led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
+    
+    if (need_to_show_near_badge && need_to_show_new_badge == 0) {
+      idling = 0;
+      just_became_idle = 0;
+      need_to_show_near_badge = 0;
+      led_next_ring = set_ring_lights_animation(NEARBADGE_INDEX, LOOP_FALSE, CROSSFADE_FALSE, 
+                                                DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
+    }
+    
+    // Newly idle
+    if (idling && just_became_idle) {
+      time_since_last_bling = 0;
+      just_became_idle = 0;
+      // Do normal behavior
       if (AM_SUPERUBER) {
         // Just finished an animation, so it's time for superubers to idle again.
         led_next_ring = set_ring_lights_animation(UBER_START_INDEX + config.badge_id, 
@@ -468,32 +505,25 @@ void loop () {
                                                   DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
       }
       if (need_to_show_new_badge == 2) {
+        // Just finished a new badge animation so I need to reset the syslight
+        // to heartbeat mode.
         led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
         need_to_show_new_badge = 0;
       }
     }
-  }
-  if (idling && !party_mode && time_since_last_bling > seconds_between_blings * 1000) {
-    // Time to do a "bling":
-    current_bling = random(BLING_START_INDEX, 
-                           BLING_START_INDEX + BLING_COUNT + (AM_FRIENDLY ? UBLING_COUNT : 0));
     
-    led_next_ring = set_ring_lights_animation(BLING_START_INDEX + current_bling, LOOP_FALSE, 
-                                              CROSSFADING, 
-                                              DEFAULT_CROSSFADE_STEP, 0, AM_SUPERUBER);
-    time_since_last_bling = 0;
-    idling = 0;
-  }
-  // The following interrupts ANYTHING except for the new badge animation.
-  if (party_mode && need_to_show_new_badge == 0) {
-    if (volume_peaking && !volume_peaking_last) {
-      // We've detected a new beat.
-      set_system_lights_animation(9, LOOP_FALSE, 0); // TODO
+    if (idling && time_since_last_bling > seconds_between_blings * 1000) {
+      // Time to do a "bling":
+      current_bling = random(BLING_START_INDEX, 
+                             BLING_START_INDEX + BLING_COUNT + (AM_FRIENDLY ? UBLING_COUNT : 0));
+      
+      led_next_ring = set_ring_lights_animation(BLING_START_INDEX + current_bling, LOOP_FALSE, 
+                                                CROSSFADING, 
+                                                DEFAULT_CROSSFADE_STEP, 0, AM_SUPERUBER);
+      time_since_last_bling = 0;
+      idling = 0;
     }
-  }
-  if (current_time >= led_next_uber_fade) {
-    led_next_uber_fade = uber_ring_fade() + current_time;
-  }
+  } // non-party mode
 #endif
   
   //////// RADIO SECTION /////////
@@ -573,7 +603,7 @@ void loop () {
             // Increment our beacon count in the current position in our
             // sliding window.
             neighbor_counts[window_position]+=1;
-            set_system_lights_animation(10, LOOP_FALSE, 0); // TODO
+            led_next_sys = set_system_lights_animation(10, LOOP_FALSE, 0); // TODO
             // See if this is a new friend:
             if (just_saw_badge(in_payload.from_id)) {
               need_to_show_new_badge = 1;
