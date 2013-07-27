@@ -36,7 +36,7 @@
 // Flag for including functions for manually setting the dot correction
 //  0 = Do not include dot correction features (generates smaller code)
 //  1 = Include dot correction features (will still read from EEPROM by default)
-#define TLC5940_INCLUDE_DC_FUNCS 1
+#define TLC5940_INCLUDE_DC_FUNCS 0
 
 // Flag for including efficient functions for setting the grayscale
 // and possibly dot correction values of four channels at once.
