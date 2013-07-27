@@ -206,6 +206,7 @@ static void loadConfig() {
       
       memset(badges_seen, 0, BADGES_IN_SYSTEM);
       badges_seen[config.badge_id] = 1;
+      saveBadge(config.badge_id);
       total_badges_seen++;
       if (config.badge_id < UBER_COUNT)
         uber_badges_seen++;
@@ -233,6 +234,8 @@ static void saveBadge(uint16_t badge_id) {
 }
 
 static void loadBadges() {
+  total_badges_seen = 0;
+  uber_badges_seen = 0;
   for (byte i = 0; i < BADGES_IN_SYSTEM; i++) {
     badges_seen[i] = eeprom_read_byte((byte*) (i + sizeof config));
     total_badges_seen += badges_seen[i];
