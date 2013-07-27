@@ -68,7 +68,7 @@ QCSys heartbeats[][4] = {
    {0, 0, 0, 0, 0},
    {0, 0, 0, 0, 0}},
   {{24, 24, 24, 33, 10}, // SPECIAL: BLINK PREBOOT 11
-   {0, 0, 0, 33, 2500},
+   {0, 0, 0, 33, 25000},
    {0, 0, 0, 33, 0},
    {0, 0, 0, 33, 0}},
 };
@@ -2343,6 +2343,17 @@ QCRing blankring[] PROGMEM = {
    0}
 }; //blank
 
+// Blank the ring:
+#define BLANK2LEN 2
+QCRing blankring2[] PROGMEM = {
+  {0, 0, 0, 0, 0, 0,
+   0, 0, 0, 0, 0, 0,
+   1},
+  {0, 0, 0, 0, 0, 0,
+   0, 0, 0, 0, 0, 0,
+   450}
+}; //blank
+
 QCRing *ring_animations[] = {&bling1, &bling2, &bling3, &bling4, &bling5, 
                              &bling6, &bling7, &bling8, &bling9, &bling10,
                              &ubling1, &ubling2, &ubling3, &ubling4, &ubling5,
@@ -2350,7 +2361,7 @@ QCRing *ring_animations[] = {&bling1, &bling2, &bling3, &bling4, &bling5,
                              &uber1, &uber2, &uber3, &uber4, &uber5,
                              &uber6, &uber7, &uber8, &uber9, &uber10,
                              &newbadge, &nearbadge, &badgecount, &superuber,
-                             &ubercount, &blankring};
+                             &ubercount, &blankring, &blankring2};
 uint8_t ring_anim_lengths[] = {BLING1LEN, BLING2LEN, BLING3LEN, BLING4LEN, BLING5LEN,
                                BLING6LEN, BLING7LEN, BLING8LEN, BLING9LEN, BLING10LEN,
                                UBLING1LEN, UBLING2LEN, UBLING3LEN, UBLING4LEN, UBLING5LEN,
@@ -2358,7 +2369,7 @@ uint8_t ring_anim_lengths[] = {BLING1LEN, BLING2LEN, BLING3LEN, BLING4LEN, BLING
                                UBER1LEN, UBER2LEN, UBER3LEN, UBER4LEN, UBER5LEN,
                                UBER6LEN, UBER7LEN, UBER8LEN, UBER9LEN, UBER10LEN,
                                NEWBADGELEN, NEARBADGELEN, BADGECOUNTLEN, SUPERUBERLEN,
-                               UBERCOUNTLEN, BLANKLEN};
+                               UBERCOUNTLEN, BLANKLEN, BLANK2RING};
 
 // For blinking:
 QCRing qcr_blinky_short = {
