@@ -60,9 +60,10 @@ QCSys heartbeats[][4] = {
    {0, 0, 0, 0, 90}},
    
   {{96, 96, 96, 0, 10}, // SPECIAL: PARTY 9
-   {0, 0, 0, 0, 90},
+   {0, 0, 0, 0, 90}, // TODO: Set this uniquely according to my badge.
    {0, 0, 0, 0, 0},
    {0, 0, 0, 0, 0}},
+   
   {{0, 0, 0, 24, 10}, // SPECIAL: RECV 10
    {0, 0, 0, 0, 90},
    {0, 0, 0, 0, 0},

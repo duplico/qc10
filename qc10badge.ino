@@ -353,6 +353,13 @@ uint8_t volume_peaking_last = 0;
 uint16_t peak_interval_time = 0;
 uint8_t num_peaks = 0;
 
+void enter_party_mode(uint16_t duration) {
+  party_mode = 1;
+  idling = 1;
+  just_became_idle = 1;
+  party_time = duration;
+}
+
 void loop () {
   current_time = millis();
   elapsed_time = current_time - last_time;
@@ -364,7 +371,7 @@ void loop () {
   // millisecond clock in the current sleep cycle:
   static uint16_t t = 0;
   // number of the current sleep cycle:
-  static uint16_t cycle_number = 0;
+  static uint16_t cycle_number = R_NUM_SLEEP_CYCLES - 1; // Stay awake to start.
   // whether we've successfully beaconed this cycle:
   static boolean sent_this_cycle = false;
   // at what t should we start trying to beacon:
@@ -420,13 +427,10 @@ void loop () {
     num_peaks++;
     if (num_peaks > PEAKS_TO_PARTY) { // PARTY TIME!
       if (t_to_send >= t)  { // Current cycle's time to send is in the future
-        party_time = PARTY_TIME + (t_to_send - t);
+        enter_party_mode(PARTY_TIME + (t_to_send - t));
       } else { // We send next cycle
-        party_time = PARTY_TIME + config.r_sleep_duration + config.r_listen_duration - t + t_to_send;
+        enter_party_mode(PARTY_TIME + config.r_sleep_duration + config.r_listen_duration - t + t_to_send);
       }
-      party_mode = 1;
-      idling = 1;
-      just_became_idle = 1;
     }
   }
   if (party_mode && party_time <= elapsed_time) {
@@ -518,9 +522,8 @@ void loop () {
       need_to_show_badge_count = 0;
     if (need_to_show_uber_count)
       need_to_show_uber_count = 0;
-    if (need_to_show_near_badge) { // Don't show the nearbadge animation please.
+    if (need_to_show_near_badge) // Don't show the nearbadge animation please.
       need_to_show_near_badge = 0;
-    }
     
     // Newly idle:
     if (idling && just_became_idle) {
@@ -530,7 +533,7 @@ void loop () {
         led_next_sys = set_system_lights_animation(BLANK_INDEX, LOOP_FALSE, 0);
       }
       // TODO: turn on whatever idle ring animation happens in party mode.
-      led_next_ring = set_ring_lights_animation(BLANK_INDEX, LOOP_FALSE, 
+      led_next_ring = set_ring_lights_animation(PARTYBLANK_INDEX, LOOP_FALSE, 
                                                 CROSSFADE_FALSE, 0, 0, 
                                                 UBERFADE_FALSE);
     }
@@ -649,8 +652,7 @@ void loop () {
             lowest_badge_this_cycle = min(in_payload.from_id, lowest_badge_this_cycle);
             if (in_payload.authority < UBER_COUNT) { // TODO: in_payload.authority <= my_authority || ?????
               if (in_payload.party != 0) {
-                party_mode = 1;
-                party_time = in_payload.party;
+                enter_party_mode(in_payload.party);
               }
             }
             if (in_payload.authority < my_authority || (in_payload.authority == my_authority && in_payload.from_id < config.badge_id)) {
