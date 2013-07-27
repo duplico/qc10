@@ -360,9 +360,11 @@ uint16_t volume_time_since = 0;
 uint8_t volume_peaking = 0;
 uint8_t volume_peaking_last = 0;
 #define VOLUME_INTERVAL 2000
+#define VOLUME_THRESHOLD 0.3
 #define PEAKS_TO_PARTY 20
 #define PARTY_PEAKS_INTERVAL 2000
 #define PARTY_TIME 10000
+#define AUDIO_SPIKE volume_peaking && !volume_peaking_last
 uint16_t peak_interval_time = 0;
 uint8_t num_peaks = 0;
 
@@ -373,13 +375,94 @@ void enter_party_mode(uint16_t duration) {
   party_time = duration;
 }
 
+// Run at VOLUME_INTERVAL:
+void do_volume_detect(elapsed_time) {
+  // Adjust timing state:
+  volume_time_since += elapsed_time;
+  peak_interval_time += elapsed_time;
+  
+  // If we need to restart our running count of peaks for party mode entry:
+  if (peak_interval_time > PARTY_PEAKS_INTERVAL) {
+    num_peaks = 0;
+    peak_interval_time = 0;
+  }
+  // We listen for VOLUME_INTERVAL milliseconds to establish an average
+  // background noise level. Then we store it as the volume_avg,
+  // clear the average counter, and use that average as the first sample
+  // in the next volume average.
+  if (volume_time_since > VOLUME_INTERVAL) {
+    volume_time_since = 0;
+    volume_avg = volume_sums / volume_samples;
+    volume_sums = volume_avg;
+    volume_samples = 1;
+  }
+  // If our ADC ISR has generated a new sound sample,
+  // add it to our running volume average counters.
+  if (new_amplitude_available) {
+    volume_sums += voltage;
+    volume_samples++;
+    // Then, if it's sufficiently larger than the average,
+    // set the volume peaking flag, storing the previous one.
+    volume_peaking_last = volume_peaking;
+    if (voltage > volume_avg + VOLUME_THRESHOLD) {
+      volume_peaking = 1;
+    }
+    else {
+      volume_peaking = 0;
+    }
+    new_amplitude_available = 0;
+  }
+  #if !(USE_LEDS)
+    if (AUDIO_SPIKE) {
+      Serial.print("Peak at ");
+      Serial.print(voltage);
+      Serial.print(" vs avg ");
+      Serial.println(volume_avg);
+    }
+  #endif
+
+  // If we're eligible to listen for clicks to turn on party mode:
+  if (!party_mode && AM_SUPERUBER && !in_preboot && AUDIO_SPIKE) {
+    num_peaks++;
+    if (num_peaks > PEAKS_TO_PARTY) { // PARTY TIME!
+      // We need to set our party timer to the number of milliseconds for which
+      // we want to be in party mode. Since party mode is contagious, we'd like
+      // all the other badges to spend about PARTY_TIME in party mode,
+      // so we add the expected number of milliseconds between now and when we
+      // send a beacon to our own party_time:
+      if (t_to_send >= t)  { // Current cycle's time to send is in the future
+        enter_party_mode(PARTY_TIME + (t_to_send - t));
+      } else { // Current cycle's time to send is in the past:
+        enter_party_mode(PARTY_TIME + config.r_sleep_duration + 
+                         config.r_listen_duration - t + t_to_send);
+        // TODO: we could use the need_to_send flag or similar for this instead.
+      }
+    }
+  }
+  // If we're in party mode, decrement the party timer.
+  // Then determine whether we should turn off party mode:
+  if (party_mode && party_time <= elapsed_time) {
+    party_mode = 0;
+    party_time = 0;
+    idling = 1;
+    just_became_idle = 1;
+  }
+  else if (party_mode) {
+    party_time -= elapsed_time;
+  }
+}
+
+void do_leds(elapsed_time) {
+  
+}
+
 void loop () {
   wdt_reset();
   current_time = millis();
   elapsed_time = current_time - last_time;
   last_time = current_time;
-  volume_time_since += elapsed_time;
-  peak_interval_time += elapsed_time;
+  
+  do_volume_detect(elapsed_time);
   
   // Some radio values:
   // millisecond clock in the current sleep cycle:
@@ -402,60 +485,6 @@ void loop () {
   static boolean badge_is_sleeping = false;
   t += elapsed_time;
   
-  if (peak_interval_time > PARTY_PEAKS_INTERVAL) {
-    num_peaks = 0;
-    peak_interval_time = 0;
-  }
-  ///////////////////////
-  // AUDIO PEAK DETECTION
-  ///////////////////////
-  if (volume_time_since > VOLUME_INTERVAL) {
-    volume_time_since = 0;
-    volume_avg = volume_sums / volume_samples;
-    volume_sums = volume_avg;
-    volume_samples = 1;
-  }
-  volume_peaking_last = volume_peaking;
-  if (new_amplitude_available) {
-    volume_sums += voltage;
-    volume_samples++;
-    if (voltage > volume_avg + .03) {
-      volume_peaking = 1;
-    }
-    else {
-      volume_peaking = 0;
-    }
-    new_amplitude_available = 0;
-  }
-#if !(USE_LEDS)
-  if (volume_peaking && !volume_peaking_last) {
-    Serial.print("Peak at ");
-    Serial.print(voltage);
-    Serial.print(" vs avg ");
-    Serial.println(volume_avg);
-  }
-#endif
-
-  // Determine whether we should turn on party mode:
-  if (!in_preboot && volume_peaking && !volume_peaking_last && !party_mode) {
-    num_peaks++;
-    if (num_peaks > PEAKS_TO_PARTY) { // PARTY TIME!
-      if (t_to_send >= t)  { // Current cycle's time to send is in the future
-        enter_party_mode(PARTY_TIME + (t_to_send - t));
-      } else { // We send next cycle
-        enter_party_mode(PARTY_TIME + config.r_sleep_duration + config.r_listen_duration - t + t_to_send);
-      }
-    }
-  }
-  if (party_mode && party_time <= elapsed_time) {
-    party_mode = 0;
-    party_time = 0;
-    idling = 1;
-    just_became_idle = 1;
-  }
-  else if (party_mode) {
-    party_time -= elapsed_time;
-  }
   
   if (!in_preboot)
     time_since_last_bling += elapsed_time;
@@ -492,7 +521,7 @@ void loop () {
                                               UBERFADE_FALSE);
   }
   if (in_preboot && idling) {
-      if (volume_peaking && !volume_peaking_last) {
+      if (AUDIO_SPIKE) {
         // We've detected a new beat.
         led_next_sys = set_system_lights_animation(11, LOOP_FALSE, 0);
       }
@@ -527,7 +556,7 @@ void loop () {
   // sound response.
   if (party_mode) {
     if (idling) {
-      if (volume_peaking && !volume_peaking_last) {
+      if (AUDIO_SPIKE) {
         // We've detected a new beat.
         led_next_sys = set_system_lights_animation(PARTY_INDEX, LOOP_FALSE, 0);
       }
