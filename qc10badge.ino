@@ -29,7 +29,7 @@ extern "C"
 
 // General (overall system) configuration
 #define UBER_COUNT 10
-#define CONFIG_STRUCT_VERSION 5
+#define CONFIG_STRUCT_VERSION 13
 #define STARTING_ID 2
 #define BADGES_IN_SYSTEM 120
 #define BADGE_METER_INTERVAL 6
@@ -37,7 +37,7 @@ extern "C"
 
 // Radio Configuration
 #define LEARNING 0 // Whether to auto-negotiate my ID. // TODO: EEPROM?
-#define RECEIVE_WINDOW 3 // How many beacon cycles to look at together.
+#define RECEIVE_WINDOW 8 // How many beacon cycles to look at together.
 // NB: It's nice if the listen duration is divisible by BADGES_IN_SYSTEM 
 #define R_SLEEP_DURATION 5000
 #define R_LISTEN_DURATION 5000
@@ -45,7 +45,7 @@ extern "C"
 #define R_NUM_SLEEP_CYCLES 6
 
 // LED configuration
-#define USE_LEDS 0
+#define USE_LEDS 1
 #define DEFAULT_CROSSFADE_STEP 2
 #define PREBOOT_INTERVAL 20000
 #define PREBOOT_SHOW_COUNT_AT 2000
@@ -163,6 +163,8 @@ static void loadConfig() {
     byte* p = (byte*) &config;
     for (byte i = 0; i < sizeof config; ++i)
         p[i] = eeprom_read_byte((byte*) i);
+    total_badges_seen = 0;
+    uber_badges_seen = 0;
     // if loaded config is not valid, replace it with defaults
     if (config.check != CONFIG_STRUCT_VERSION) {
         config.check = CONFIG_STRUCT_VERSION;
@@ -181,18 +183,21 @@ static void loadConfig() {
         
         memset(badges_seen, 0, BADGES_IN_SYSTEM);
         badges_seen[config.badge_id] = 1;
+        total_badges_seen++;
+        if (config.badge_id < UBER_COUNT)
+          uber_badges_seen++;
     }
-
-    total_badges_seen = 0;
-    uber_badges_seen = 0;
-    uint8_t badge_id;
-    for (badge_id=0; badge_id<BADGES_IN_SYSTEM; badge_id++) {
-      total_badges_seen += (uint8_t)has_seen_badge(badge_id);
-      if (badge_id < UBER_COUNT) {
-        uber_badges_seen += (uint8_t)has_seen_badge(badge_id);
+    else {
+      // TODO: Make this loadBadges();
+      uint8_t badge_id;
+      for (badge_id=0; badge_id<BADGES_IN_SYSTEM; badge_id++) {
+        total_badges_seen += (uint8_t)has_seen_badge(badge_id);
+        if (badge_id < UBER_COUNT) {
+          uber_badges_seen += (uint8_t)has_seen_badge(badge_id);
+        }
       }
     }
-    
+
     // Store the parts of our config that rarely change in the outgoing payload.
     out_payload.from_id = config.badge_id;
     out_payload.badges_in_system = config.badges_in_system;
@@ -258,7 +263,7 @@ void setup () {
 //    randomSeed(analogRead(0)); // For randomly choosing blings
 #endif
     loadConfig();
-    loadBadges();
+    //loadBadges();
     last_time = millis();
     current_time = millis();
 #if USE_LEDS
@@ -273,7 +278,7 @@ void setup () {
 
 void set_heartbeat(uint8_t target_sys) {
   if (target_sys != current_sys) {
-    if (need_to_show_new_badge == 0 && !party_mode) {
+    if (need_to_show_new_badge < 2 && !party_mode) {
       led_next_sys = set_system_lights_animation(target_sys, LOOP_TRUE, 0);
     }
     current_sys = target_sys;
@@ -281,7 +286,7 @@ void set_heartbeat(uint8_t target_sys) {
 }
 
 void set_gaydar_state(uint16_t cur_neighbor_count, uint16_t last_neighbor_count) {
-  if (last_neighbor_count == 0 && cur_neighbor_count != 0) {
+  if (last_neighbor_count == 0 && cur_neighbor_count != 0 && need_to_show_new_badge == 0) {
     need_to_show_near_badge = 1;
   }
   if (cur_neighbor_count == 0) {
@@ -573,6 +578,13 @@ void loop () {
             if (just_saw_badge(in_payload.from_id)) {
               need_to_show_new_badge = 1;
             }
+            // If this marks a new max we should start immediately showing it.
+            if (neighbor_counts[window_position] > last_neighbor_count) {
+              set_gaydar_state(neighbor_counts[window_position], 
+                               last_neighbor_count);
+              last_neighbor_count = neighbor_count;
+              neighbor_count = neighbor_counts[window_position];
+            }
 #if LEARNING
             // If we're in ID learning mode, and we've heard an ID that we
             // thought was supposed to be us:
@@ -657,12 +669,12 @@ void loop () {
     Serial.println(last_neighbor_count);
 #endif
     cycle_number++;
-  if (!sent_this_cycle) {
-    // TODO: backoff on the LNA.
-    if (lna_setting < 3) {
-      rf12_control(LNA_COMMANDS[++lna_setting]);
+    if (!sent_this_cycle) {
+      // TODO: backoff on the LNA.
+      if (lna_setting < 3) {
+        rf12_control(LNA_COMMANDS[++lna_setting]);
+      }
     }
-  }
     sent_this_cycle = false;
     if (cycle_number > config.r_num_sleep_cycles) {
       // Time for a new interval
