@@ -237,7 +237,7 @@ static void loadBadges() {
   total_badges_seen = 0;
   uber_badges_seen = 0;
   for (byte i = 0; i < BADGES_IN_SYSTEM; i++) {
-    badges_seen[i] = eeprom_read_byte((byte*) (i + sizeof config));
+    badges_seen[i] = (eeprom_read_byte((byte*) (i + sizeof config)) || i==config.badge_id);
     total_badges_seen += badges_seen[i];
     if (i < UBER_COUNT) {
       uber_badges_seen += badges_seen[i];
