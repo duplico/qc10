@@ -711,7 +711,14 @@ void loop () {
             led_next_sys = set_system_lights_animation(10, LOOP_FALSE, 0); // TODO: don't do this.
             // See if this is a new friend by calling this non-idempotent function:
             if (save_and_check_badge(in_payload.from_id)) {
-              need_to_show_new_badge = 1;
+              // Set to 2 if we just saw a superuber badge, 1 otherwise:
+              need_to_show_new_badge = in_payload.from_id < UBER_COUNT ? 2 : 1;
+              if (need_to_show_new_badge == 2) { // It was uber
+                need_to_show_uber_count = 1;
+              }
+              else {
+                need_to_show_badge_count = 1;
+              }
             }
             // If this marks a new max we should start immediately showing it.
             if (neighbor_counts[window_position] > neighbor_count) {
