@@ -16,6 +16,12 @@
 // lfuse: 0xBF
 // hfuse: 0xDE
 
+// TODO: Uber badge counts aren't loading.
+// TODO: Communication difficulties.
+// TODO: Battery issues.
+// TODO: Still a lag between identifyign a new badge and doing the nearbadge amimation.
+
+
 #include <JeeLib.h>
 #include <avr/eeprom.h>
 #include <avr/pgmspace.h>
@@ -586,7 +592,7 @@ void loop () {
       led_next_ring = set_ring_lights_animation(BLING_START_INDEX + current_bling, LOOP_FALSE, 
                                                 CROSSFADING, 
                                                 DEFAULT_CROSSFADE_STEP, 0, AM_SUPERUBER);
-      time_since_last_bling = 0;
+      // time_since_last_bling = 0; // With longer times, maybe not clear this?
       idling = 0;
     }
   } // non-party mode
