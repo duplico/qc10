@@ -227,7 +227,7 @@ static boolean has_seen_badge(uint16_t badge_id) {
 }
 
 // Returns true if this is the first time we've seen the badge.
-static boolean just_saw_badge(uint16_t badge_id) {
+static boolean save_and_check_badge(uint16_t badge_id) {
   boolean seen_before = has_seen_badge(badge_id);
   badges_seen[badge_id] |= 0b00000001;
 #if !(USE_LEDS)
@@ -294,7 +294,7 @@ void set_heartbeat(uint8_t target_sys) {
   }
 }
 
-void set_gaydar_state(uint16_t cur_neighbor_count, uint16_t last_neighbor_count) {
+void set_gaydar_state(uint16_t cur_neighbor_count) {
   if (last_neighbor_count == 0 && cur_neighbor_count != 0 && need_to_show_new_badge == 0) {
     need_to_show_near_badge = 1;
   }
@@ -320,6 +320,7 @@ void set_gaydar_state(uint16_t cur_neighbor_count, uint16_t last_neighbor_count)
     set_heartbeat(6);
     seconds_between_blings = 8;
   }
+  last_neighbor_count = cur_neighbor_count;
 }
 
 void show_badge_count() {
@@ -657,19 +658,17 @@ void loop () {
             // sliding window.
             neighbor_counts[window_position]+=1;
             led_next_sys = set_system_lights_animation(10, LOOP_FALSE, 0); // TODO: don't do this.
-            // See if this is a new friend:
-            if (just_saw_badge(in_payload.from_id)) {
+            // See if this is a new friend by calling this non-idempotent function:
+            if (save_and_check_badge(in_payload.from_id)) {
               need_to_show_new_badge = 1;
             }
             // If this marks a new max we should start immediately showing it.
             if (neighbor_counts[window_position] > neighbor_count) {
-              set_gaydar_state(neighbor_counts[window_position], 
-                               neighbor_count);
+              set_gaydar_state(neighbor_counts[window_position]);
               neighbor_count = neighbor_counts[window_position];
-              last_neighbor_count = neighbor_count;
             }
             lowest_badge_this_cycle = min(in_payload.from_id, lowest_badge_this_cycle);
-            if (in_payload.authority < UBER_COUNT) { // TODO: in_payload.authority <= my_authority || ?????
+            if (in_payload.authority < UBER_COUNT) {
               if (in_payload.party != 0) {
                 enter_party_mode(in_payload.party);
               }
@@ -722,22 +721,20 @@ void loop () {
   else {
     // Time for a new sleep cycle
     t = 0;
-    last_neighbor_count = neighbor_count;
     neighbor_count = 0;
     for (int i=0; i<RECEIVE_WINDOW; i++) {
-      if (i != window_position && neighbor_counts[i] > neighbor_count) {
+      if (neighbor_counts[i] > neighbor_count) {
         neighbor_count = neighbor_counts[i];
       }
     }
     window_position = (window_position + 1) % RECEIVE_WINDOW;
     neighbor_counts[window_position] = 0;
 #if USE_LEDS
-    set_gaydar_state(neighbor_count, last_neighbor_count); // TODO: this is still happening inappropriately.
+    set_gaydar_state(neighbor_count); // TODO: this is still happening inappropriately.
 #else
     Serial.print("--|Update: ");
     Serial.print(neighbor_count);
-    Serial.print(" neighbors, previously ");
-    Serial.println(last_neighbor_count);
+    Serial.print(" neighbors");
 #endif
     cycle_number++;
     if (!sent_this_cycle) {
