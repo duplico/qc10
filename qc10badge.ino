@@ -187,14 +187,7 @@ static void loadConfig() {
           uber_badges_seen++;
     }
     else {
-      // TODO: Make this loadBadges();
-      uint8_t badge_id;
-      for (badge_id=0; badge_id<BADGES_IN_SYSTEM; badge_id++) {
-        total_badges_seen += (uint8_t)has_seen_badge(badge_id);
-        if (badge_id < UBER_COUNT) {
-          uber_badges_seen += (uint8_t)has_seen_badge(badge_id);
-        }
-      }
+      loadBadges();
     }
 
     // Store the parts of our config that rarely change in the outgoing payload.
@@ -214,7 +207,14 @@ static void saveBadge(uint16_t badge_id) {
 
 static void loadBadges() {
   for (byte i = 0; i < BADGES_IN_SYSTEM; i++)
-      badges_seen[i] = eeprom_read_byte((byte*) (i + sizeof config));
+    badges_seen[i] = eeprom_read_byte((byte*) (i + sizeof config));
+    uint8_t badge_id;
+    for (badge_id=0; badge_id<BADGES_IN_SYSTEM; badge_id++) {
+      total_badges_seen += (uint8_t)has_seen_badge(badge_id);
+      if (badge_id < UBER_COUNT) {
+        uber_badges_seen += (uint8_t)has_seen_badge(badge_id);
+      }
+    }
 }
 
 static boolean has_seen_badge(uint16_t badge_id) {
@@ -312,6 +312,8 @@ void set_gaydar_state(uint16_t cur_neighbor_count, uint16_t last_neighbor_count)
 }
 
 void show_badge_count() {
+  if (party_mode)
+    return;
   // 13 is all. 24 is none.
   uint8_t end_index = 26 - (total_badges_seen-1) / BADGE_METER_INTERVAL;
   if (end_index < 13)
@@ -327,6 +329,8 @@ void show_badge_count() {
 }
 
 void show_uber_count() {
+  if (party_mode)
+    return;
   if (AM_UBER) {
     // Display "ALL" animation
     led_next_ring = set_ring_lights_animation(UBERCOUNT_INDEX, LOOP_FALSE, CROSSFADING, 
@@ -532,7 +536,6 @@ void loop () {
         need_to_show_new_badge = 0;
         led_next_sys = set_system_lights_animation(BLANK_INDEX, LOOP_FALSE, 0);
       }
-      // TODO: turn on whatever idle ring animation happens in party mode.
       led_next_ring = set_ring_lights_animation(PARTYBLANK_INDEX, LOOP_FALSE, 
                                                 CROSSFADE_FALSE, 0, 0, 
                                                 UBERFADE_FALSE);
