@@ -29,14 +29,13 @@ extern "C"
 
 // General (overall system) configuration
 #define UBER_COUNT 10
-#define CONFIG_STRUCT_VERSION 13
+#define CONFIG_STRUCT_VERSION 14
 #define STARTING_ID 2
 #define BADGES_IN_SYSTEM 120
 #define BADGE_METER_INTERVAL 6
 #define BADGE_FRIENDLY_CUTOFF 60
 
 // Radio Configuration
-#define LEARNING 0 // Whether to auto-negotiate my ID. // TODO: EEPROM?
 #define RECEIVE_WINDOW 8 // How many beacon cycles to look at together.
 // NB: It's nice if the listen duration is divisible by BADGES_IN_SYSTEM 
 #define R_SLEEP_DURATION 5000
@@ -169,9 +168,9 @@ static void loadConfig() {
     if (config.check != CONFIG_STRUCT_VERSION) {
         config.check = CONFIG_STRUCT_VERSION;
         config.freq = 4;
-        config.rcv_group = 0; // TODO: 211
+        config.rcv_group = 211;
         config.rcv_id = 1;
-        config.bcn_group = 0; // TODO: 211
+        config.bcn_group = 211;
         config.bcn_id = 1;
         config.badge_id = STARTING_ID;
         config.badges_in_system = BADGES_IN_SYSTEM;
@@ -227,7 +226,6 @@ static boolean just_saw_badge(uint16_t badge_id) {
   boolean seen_before = has_seen_badge(badge_id);
   badges_seen[badge_id] |= 0b00000001;
 #if !(USE_LEDS)
-  // TODO: these seems to be a problem with these counts.
   Serial.print("--|Just saw ");
   Serial.print(badge_id);
   Serial.print(". Seen: ");
@@ -318,6 +316,9 @@ void show_badge_count() {
   uint8_t end_index = 26 - (total_badges_seen-1) / BADGE_METER_INTERVAL;
   if (end_index < 13)
     end_index = 13;
+  if (end_index == 13) {
+    // Do the super special animation.
+  }
 
   led_next_ring = set_ring_lights_blink(BADGECOUNT_INDEX, LOOP_FALSE, 
                                         CROSSFADING, DEFAULT_CROSSFADE_STEP,
@@ -421,12 +422,11 @@ void loop () {
     in_preboot = 0;
     led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
     time_since_last_bling = 0;
-    idling = 1; // TODO: unnecessary?
     just_became_idle = 1;
   }
   if (in_preboot) return; // Don't look for other badges in preboot.
 //// ONLY AFTER BOOT:
-  if (!led_sys_animating && !party_mode) // TODO: Is this right?
+  if (!led_sys_animating && !party_mode)
     led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
   else if (!led_sys_animating) {
     // TODO: Do party mode LED thing.
@@ -542,34 +542,34 @@ void loop () {
     if (badge_is_sleeping) {
       // Wake up if necessary, printing cycle information.
       rf12_sleep(-1);
-#if !(USE_LEDS)
-      Serial.print("--|Cycle ");
-      Serial.print(cycle_number);
-      Serial.print("/");
-      Serial.print(config.r_num_sleep_cycles);
-      Serial.print(" t:");
-      Serial.println(t);
-      Serial.println("--|Waking radio.");
-#endif
+      #if !(USE_LEDS)
+        Serial.print("--|Cycle ");
+        Serial.print(cycle_number);
+        Serial.print("/");
+        Serial.print(config.r_num_sleep_cycles);
+        Serial.print(" t:");
+        Serial.println(t);
+        Serial.println("--|Waking radio.");
+      #endif
       badge_is_sleeping = false;
     }
     // Radio listens
     
     if (rf12_recvDone() && rf12_crc == 0) {
-        // We've received something. Is it valid?
-        if (rf12_len == sizeof in_payload) {      
-            // TODO: confirm correct version.
-            // TODO: bounds checking
-            in_payload = *(qcbpayload *)rf12_data;
-#if !(USE_LEDS)
-            // Print the metadata and badge ID of the beacon we've received.
-            Serial.print("<-|RCV OK ");
-            Serial.print(rf12_grp);
-            Serial.print("g ");
-            Serial.print(rf12_hdr);
-            Serial.print("hdr; beacon from ");
-            Serial.println(in_payload.from_id);
-#endif
+      // We've received something. Is it valid?
+      if (rf12_len == sizeof in_payload) {
+          // TODO: confirm correct version.
+          in_payload = *(qcbpayload *)rf12_data;
+          if (in_payload.from_id < BADGES_IN_SYSTEM) {            
+            #if !(USE_LEDS)
+              // Print the metadata and badge ID of the beacon we've received.
+              Serial.print("<-|RCV OK ");
+              Serial.print(rf12_grp);
+              Serial.print("g ");
+              Serial.print(rf12_hdr);
+              Serial.print("hdr; beacon from ");
+              Serial.println(in_payload.from_id);
+            #endif
             // Increment our beacon count in the current position in our
             // sliding window.
             neighbor_counts[window_position]+=1;
@@ -585,25 +585,9 @@ void loop () {
               last_neighbor_count = neighbor_count;
               neighbor_count = neighbor_counts[window_position];
             }
-#if LEARNING
-            // If we're in ID learning mode, and we've heard an ID that we
-            // thought was supposed to be us:
-            if (LEARNING && in_payload.from_id == config.badge_id) {
-                // Increment our ID by one.
-                config.badge_id += 1;
-                saveConfig();
-#if !(USE_LEDS)
-                Serial.print("--|Duplicate ID detected. Incrementing mine to ");
-                Serial.println(config.badge_id);
-#endif
-                t_to_send = config.r_sleep_duration + (config.r_listen_wake_pad / 2) + 
-                            ((config.r_listen_duration - config.r_listen_wake_pad) / config.badges_in_system) * config.badge_id;
-                my_authority = config.badge_id;
-            }
-#endif
             lowest_badge_this_cycle = min(in_payload.from_id, lowest_badge_this_cycle);
             if (in_payload.authority < my_authority || (in_payload.authority == my_authority && in_payload.from_id < config.badge_id)) {
-#if !(USE_LEDS)
+            #if !(USE_LEDS)
               Serial.print("|--Detected a higher authority ");
               Serial.print(in_payload.authority);
               Serial.print(" than my current ");
@@ -612,37 +596,38 @@ void loop () {
               Serial.print((int)in_payload.cycle_number - (int)cycle_number);
               Serial.print(" and t by ");
               Serial.println((int)in_payload.timestamp - (int)t);
-#endif
-              my_authority = in_payload.authority;
-              cycle_number = in_payload.cycle_number;
-              if (in_payload.timestamp < t_to_send) {
-                sent_this_cycle = false;
-              }
-              t = in_payload.timestamp;
+            #endif
+            my_authority = in_payload.authority;
+            cycle_number = in_payload.cycle_number;
+            if (in_payload.timestamp < t_to_send) {
+              sent_this_cycle = false;
             }
-          } else {
-            // Wrong length.
-#if !(USE_LEDS)
-            Serial.println("Malformed packet received.");
-#endif
-        }
+            t = in_payload.timestamp;
+          }
+        } // ID check
+      } else {
+        // Wrong length.
+        #if !(USE_LEDS)
+          Serial.println("Malformed packet received.");
+        #endif
+      } // length check
     }
     if (!sent_this_cycle && t > t_to_send) {
       // Beacon.
-#if !(USE_LEDS)
-      Serial.println("--|BCN required.");
-#endif
+      #if !(USE_LEDS)
+        Serial.println("--|BCN required.");
+      #endif
       out_payload.authority = my_authority;
       out_payload.cycle_number = cycle_number;
       out_payload.timestamp = t;
       if (rf12_canSend()) {
         sent_this_cycle = true;
         // Beacon.
-#if !(USE_LEDS)
-        Serial.println("->|BCN my number ");
-#else
-        //set_system_lights_animation(9, LOOP_FALSE, 0); // TODO
-#endif
+        #if !(USE_LEDS)
+          Serial.println("->|BCN my number ");
+        #else
+          //set_system_lights_animation(9, LOOP_FALSE, 0);
+        #endif
         rf12_sendStart(0, &out_payload, sizeof out_payload);
         my_authority = config.badge_id;
       }
@@ -670,7 +655,7 @@ void loop () {
 #endif
     cycle_number++;
     if (!sent_this_cycle) {
-      // TODO: backoff on the LNA.
+      // Backoff on the LNA if we couldn't send.
       if (lna_setting < 3) {
         rf12_control(LNA_COMMANDS[++lna_setting]);
       }
