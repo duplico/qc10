@@ -235,24 +235,21 @@ static void saveBadge(uint16_t badge_id) {
 static void loadBadges() {
   for (byte i = 0; i < BADGES_IN_SYSTEM; i++) {
     badges_seen[i] = eeprom_read_byte((byte*) (i + sizeof config));
-    uint8_t badge_id;
-    for (badge_id=0; badge_id<BADGES_IN_SYSTEM; badge_id++) {
-      total_badges_seen += (uint8_t)has_seen_badge(badge_id);
-      if (badge_id < UBER_COUNT) {
-        uber_badges_seen += (uint8_t)has_seen_badge(badge_id);
-      }
+    total_badges_seen += badges_seen[i];
+    if (i < UBER_COUNT) {
+      uber_badges_seen += badges_seen[i];
     }
   }
 }
 
-static boolean has_seen_badge(uint16_t badge_id) {
-  return (badges_seen[badge_id] & 0b0000001);
+static uint8_t has_seen_badge(uint16_t badge_id) {
+  return (badges_seen[badge_id]);
 }
 
 // Returns true if this is the first time we've seen the badge.
-static boolean save_and_check_badge(uint16_t badge_id) {
-  boolean seen_before = has_seen_badge(badge_id);
-  badges_seen[badge_id] |= 0b00000001;
+static uint8_t save_and_check_badge(uint16_t badge_id) {
+  uint8_t seen_before = has_seen_badge(badge_id);
+  badges_seen[badge_id] |= 1;
 #if !(USE_LEDS)
   Serial.print("--|Just saw ");
   Serial.print(badge_id);
@@ -260,7 +257,7 @@ static boolean save_and_check_badge(uint16_t badge_id) {
   Serial.println(has_seen_badge(badge_id));
 #endif
   if (seen_before) {
-    return false;
+    return 0;
   }
   if (badge_id < UBER_COUNT) {
     uber_badges_seen++;
@@ -309,16 +306,8 @@ void setup () {
 }
 
 void set_heartbeat(uint8_t target_sys) {
-/*
-  if (target_sys != current_sys) {
-    if (!party_mode && led_sys_animating) {
-      led_next_sys = set_system_lights_animation(target_sys, LOOP_TRUE, 0);
-    }
-    */
-    // This is handled in the loop code now.
-    if (!party_mode)
-      current_sys = target_sys;
-  //}
+  if (!party_mode)
+    current_sys = target_sys;
 }
 
 void set_gaydar_state(uint16_t cur_neighbor_count) {
