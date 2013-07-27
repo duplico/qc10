@@ -7,8 +7,8 @@
 #include "tlc5940.h"
 #include "animations.h"
 
-#define COUNT_INTENSITY 128
-#define BLING_INTENSITY 48
+#define COUNT_INTENSITY 100
+#define BLING_INTENSITY 30
 
 #define UBER_BRIGHT 15
 #define UBER_DIM 8
