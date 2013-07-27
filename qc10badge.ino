@@ -643,9 +643,9 @@ void loop () {
               need_to_show_new_badge = 1;
             }
             // If this marks a new max we should start immediately showing it.
-            if (neighbor_counts[window_position] > last_neighbor_count) {
+            if (neighbor_counts[window_position] > neighbor_count) {
               set_gaydar_state(neighbor_counts[window_position], 
-                               last_neighbor_count);
+                               neighbor_count);
               neighbor_count = neighbor_counts[window_position];
               last_neighbor_count = neighbor_count;
             }
