@@ -220,13 +220,13 @@ void disableAdc();
 
 void leave_party_mode();
 void enter_party_mode(uint16_t);
-extern uint8_t party_mode;
-extern uint16_t party_time;
+extern volatile uint8_t party_mode;
+extern volatile uint16_t party_time;
 
 
 // from the stupid arduino file:
-extern uint8_t force_idle; // TODO: volatile
-extern uint8_t current_sys; // TODO: volatile
+extern volatile uint8_t force_idle;
+extern volatile uint8_t current_sys;
 extern uint8_t neighbor_count;
 extern uint8_t in_preboot;
 extern uint8_t idling;

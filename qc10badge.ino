@@ -87,12 +87,12 @@ uint8_t current_bling = 0;
 uint8_t shown_badgecount = 0;
 uint8_t shown_ubercount = 0;
 uint8_t in_preboot = 1;
-uint8_t current_sys = 0;
+volatile uint8_t current_sys = 0;
 uint32_t led_next_ring = 0;
 uint32_t led_next_uber_fade = 0;
 uint32_t led_next_sys = 0;
 uint8_t idling = 1;
-uint8_t force_idle = 0;
+volatile uint8_t force_idle = 0;
 uint8_t need_to_show_near_badge = 0;
 uint8_t need_to_show_new_badge = 0;
 uint8_t need_to_show_uber_count = 1;
@@ -356,14 +356,6 @@ void show_uber_count() {
   }
 }
 
-
-
-
-
-// Run at VOLUME_INTERVAL:
-void do_volume_detect(uint32_t elapsed_time) {
-}
-
 void do_ring_update() { //uint32_t elapsed_time, uint32_t current_time) {
   
   // Determine whether we should turn on idle
@@ -500,17 +492,6 @@ void do_led_control(uint32_t elapsed_time) {
       disableAdc();
     }
   }
-  
-  if (in_preboot) return; // Don't look for other badges in preboot.
-  
- ///// PARTY MODE:
-  // The only way we can be NOT idling in party mode is to be
-  // showing a "new badge" animation. So if we're idling, we can do the
-  // sound response.
-  // Party mode happens due to ADC activity.
-  // TODO: set party mode from ADC ISR
-  // TODO: set light blinks from ADC ISR
-  // TODO: Enable/disable ADC ISR based upon party mode / ability to cause party mode
 }
 
 void loop () {
@@ -518,7 +499,6 @@ void loop () {
   current_time = millis();
   elapsed_time = current_time - last_time;
   last_time = current_time;
-  do_volume_detect(elapsed_time);
   t += elapsed_time;
   if (!in_preboot)
     time_since_last_bling += elapsed_time;
