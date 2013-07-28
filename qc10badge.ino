@@ -481,7 +481,7 @@ void do_sys_update() {
   //   go back to heartbeat and/or blank-for-party.
   if (!in_preboot && 
       (!led_sys_animating || 
-       (idling && led_sys_animation != current_sys))) {
+       (!party_mode && idling && led_sys_animation != current_sys))) {
     // Go back to heartbeating (or blank in party mode)
     set_gaydar_state(neighbor_count); // Make sure we use the right heartbeat.
     led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
