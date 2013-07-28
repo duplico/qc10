@@ -136,24 +136,24 @@ static word code2type(byte code) {
 
 // Print our current configuration to the Serial console.
 #if !(USE_LEDS)
-static void showConfig() {
+  static void showConfig() {
 
-    Serial.print("I am badge ");
-    Serial.println(config.badge_id);
-    Serial.print(' ');
-    Serial.print(code2freq(config.freq));
-    Serial.print(':');
-    Serial.print((int) config.rcv_group);
-    Serial.print(':');
-    Serial.print((int) config.rcv_id);
-    Serial.print(" -> ");
-    Serial.print(code2freq(config.freq));
-    Serial.print(':');
-    Serial.print((int) config.bcn_group);
-    Serial.print(':');
-    Serial.print((int) config.bcn_id);
-    Serial.println();
-}
+      Serial.print("I am badge ");
+      Serial.println(config.badge_id);
+      Serial.print(' ');
+      Serial.print(code2freq(config.freq));
+      Serial.print(':');
+      Serial.print((int) config.rcv_group);
+      Serial.print(':');
+      Serial.print((int) config.rcv_id);
+      Serial.print(" -> ");
+      Serial.print(code2freq(config.freq));
+      Serial.print(':');
+      Serial.print((int) config.bcn_group);
+      Serial.print(':');
+      Serial.print((int) config.bcn_id);
+      Serial.println();
+  }
 #endif
 
 // Load our configuration from EEPROM (also computing some payload).
