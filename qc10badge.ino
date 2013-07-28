@@ -30,7 +30,7 @@ extern "C"
 
 // General (overall system) configuration
 #define UBER_COUNT 10
-#define CONFIG_STRUCT_VERSION 17
+#define CONFIG_STRUCT_VERSION 18
 #define STARTING_ID 5
 #define BADGES_IN_SYSTEM 105
 #define BADGE_METER_INTERVAL 6
@@ -201,7 +201,7 @@ static void loadConfig() {
 
 static void saveBadge(uint16_t badge_id) {
   int badge_address = (sizeof config) + badge_id;
-  eeprom_write_byte((uint8_t *) badge_id, badges_seen[badge_id]);
+  eeprom_write_byte((uint8_t *) badge_address, badges_seen[badge_id]);
 }
 
 static void loadBadges() {
