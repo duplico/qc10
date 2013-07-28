@@ -505,6 +505,14 @@ void do_ring_update() { //uint32_t elapsed_time, uint32_t current_time) {
                                                 UBERFADE_FALSE);
     }
   }
+  if (party_mode) {
+    if (need_to_show_badge_count)
+      need_to_show_badge_count = 0;
+    if (need_to_show_uber_count)
+      need_to_show_uber_count = 0;
+    if (need_to_show_near_badge) // Don't show the nearbadge animation please.
+      need_to_show_near_badge = 0;
+  }
   
   // Badge count:
   //  Non-preemptive (except idle)
@@ -594,14 +602,17 @@ void do_sys_update() {
         led_next_sys = set_system_lights_animation(11, LOOP_FALSE, 0);
       }
   }
+  if (party_mode && idling && AUDIO_SPIKE) {
+    // We've detected a new beat.
+    led_next_sys = set_system_lights_animation(SYSTEM_PARTY_INDEX, LOOP_FALSE, 0);
+  }
+  
   // If we're booted and either (a) not showing an animation or
   //   (b) just finished the newbadge animation.
   //   go back to heartbeat and/or blank-for-party.
   if (!in_preboot && 
       (!led_sys_animating || 
-       (idling && led_sys_animation != current_sys))) { /*
-       (led_sys_animation == SYSTEM_NEWBADGE_INDEX && idling) ||
-       (led_sys_animation != current_sys)) { */ //??????
+       (idling && led_sys_animation != current_sys))) {
     // Go back to heartbeating (or blank in party mode)
     led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
   }
@@ -628,20 +639,6 @@ void do_led_control(uint32_t elapsed_time) {
   // TODO: set party mode from ADC ISR
   // TODO: set light blinks from ADC ISR
   // TODO: Enable/disable ADC ISR based upon party mode / ability to cause party mode
-  if (party_mode) {
-    if (idling) {
-      if (AUDIO_SPIKE) {
-        // We've detected a new beat.
-        led_next_sys = set_system_lights_animation(SYSTEM_PARTY_INDEX, LOOP_FALSE, 0);
-      }
-    }
-    if (need_to_show_badge_count)
-      need_to_show_badge_count = 0;
-    if (need_to_show_uber_count)
-      need_to_show_uber_count = 0;
-    if (need_to_show_near_badge) // Don't show the nearbadge animation please.
-      need_to_show_near_badge = 0;
-  }
 }
 
 void loop () {
