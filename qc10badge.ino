@@ -4,7 +4,7 @@
  *
  * <http://www.queercon.org>
  */
-// MIT License. http://opensource.org/licenses/mit-license.php
+// MIT License. http://opensource.org/licenses/MIT
 //
 // Based in part on example code provided by:
 // (c) 17-May-2010 <jc@wippler.nl>
