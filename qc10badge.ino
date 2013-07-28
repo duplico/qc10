@@ -208,8 +208,12 @@ static void loadBadges() {
   total_badges_seen = 0;
   uber_badges_seen = 0;
   for (byte i = 0; i < BADGES_IN_SYSTEM; i++) {
-    badges_seen[i] = (eeprom_read_byte((byte*) (i + sizeof config)) 
-                      || i==config.badge_id); // Count ourselves.
+    badges_seen[i] = (eeprom_read_byte((byte*) (i + sizeof config))); 
+    // Count ourselves:
+    if (i == config.badge_id) {
+      badges_seen[i] = 1;
+      saveBadge(i);
+    }
     total_badges_seen += badges_seen[i];
     if (i < UBER_COUNT) {
       uber_badges_seen += badges_seen[i];
@@ -260,8 +264,8 @@ void setup () {
 #else
     randomSeed(analogRead(0)); // For randomly choosing blings
 #endif
-    loadBadges();
     loadConfig();
+    loadBadges();
     last_time = millis();
     current_time = millis();
 #if USE_LEDS
@@ -345,10 +349,10 @@ void show_uber_count() {
                                             DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
   }
   else {
-  uint8_t end_index = 7 + uber_badges_seen;
-  led_next_ring = set_ring_lights_blink(UBERCOUNT_INDEX, LOOP_FALSE, CROSSFADING, 
-                                        DEFAULT_CROSSFADE_STEP, end_index, UBERFADE_FALSE,
-                                        qcr_ubercount_blinky, 16);
+    uint8_t end_index = 7 + uber_badges_seen;
+    led_next_ring = set_ring_lights_blink(UBERCOUNT_INDEX, LOOP_FALSE, CROSSFADING, 
+                                          DEFAULT_CROSSFADE_STEP, end_index, UBERFADE_FALSE,
+                                          qcr_ubercount_blinky, 16);
   }
 }
 
