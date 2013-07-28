@@ -311,8 +311,6 @@ volatile uint8_t adc_value = 0;
 volatile float voltage = 0;
 volatile uint8_t new_amplitude_available = 0;
 
-
-
 void setupAdc() {  
   ADMUX = 0b01100110;  // default to AVCC VRef, ADC Left Adjust, and ADC channel 6
   ADCSRB = 0b00000000; // Analog Input bank 1
@@ -327,7 +325,7 @@ void disableAdc() {
 
 volatile float volume_sums = 0;
 volatile uint16_t volume_samples = 0;
-#define VOLUME_INTERVAL 2000
+#define VOLUME_INTERVAL 500
 volatile float volume_avg = 0;
 volatile uint8_t volume_peaking = 0;
 volatile uint8_t volume_peaking_last = 0;
