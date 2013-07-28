@@ -293,7 +293,7 @@ void set_heartbeat(uint8_t target_sys) {
 }
 
 void set_gaydar_state(uint16_t cur_neighbor_count) {
-  if (last_neighbor_count == 0 && cur_neighbor_count != 0 && need_to_show_new_badge == 0) {
+  if (last_neighbor_count == 0 && cur_neighbor_count != 0 && need_to_show_new_badge == 0 && current_sys == 0) {
     need_to_show_near_badge = 1;
   }
   if (cur_neighbor_count == 0) {
