@@ -387,6 +387,19 @@ void do_ring_update() { //uint32_t elapsed_time, uint32_t current_time) {
       need_to_show_near_badge = 0;
   }
   
+  // New badge:
+  //  Preemptive.
+  // Happens ONLY due to radio action (can't even be triggered in preboot, when radio is off):
+  if (need_to_show_new_badge) {
+    idling = 0;
+    need_to_show_new_badge = 0;
+    led_next_ring = set_ring_lights_animation(NEWBADGE_INDEX, LOOP_FALSE, CROSSFADE_FALSE, 
+                                              DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
+    led_next_sys = set_system_lights_animation(SYSTEM_NEWBADGE_INDEX, LOOP_TRUE, 0); // TODO
+    // Pre-empt the near badge animation.
+    need_to_show_near_badge = 0;
+  }
+  
   // Badge count:
   //  Non-preemptive (except idle)
   // Happens either:
@@ -407,19 +420,6 @@ void do_ring_update() { //uint32_t elapsed_time, uint32_t current_time) {
     idling = 0;
     need_to_show_uber_count = 0;
     show_uber_count();
-  }
-  
-  // New badge:
-  //  Preemptive.
-  // Happens ONLY due to radio action (can't even be triggered in preboot, when radio is off):
-  if (need_to_show_new_badge) {
-    idling = 0;
-    need_to_show_new_badge = 0;
-    led_next_ring = set_ring_lights_animation(NEWBADGE_INDEX, LOOP_FALSE, CROSSFADE_FALSE, 
-                                              DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
-    led_next_sys = set_system_lights_animation(SYSTEM_NEWBADGE_INDEX, LOOP_TRUE, 0); // TODO
-    // Pre-empt the near badge animation.
-    need_to_show_near_badge = 0;
   }
   
   // Near badge:
@@ -580,7 +580,7 @@ void loop () {
             }
             lowest_badge_this_cycle = min(in_payload.from_id, lowest_badge_this_cycle);
             if (in_payload.authority < UBER_COUNT) {
-              if (in_payload.party != 0) {
+              if (!party_mode && in_payload.party != 0) {
                 enter_party_mode(in_payload.party);
               }
             }
