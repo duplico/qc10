@@ -50,6 +50,26 @@
 float QCRSource[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 float QCRDest[16];
 float QCRInc[16];
+uint8_t led_sys_animation = 0;
+uint8_t led_sys_count = 0;
+uint8_t led_sys_animating = 0;
+uint8_t led_sys_looping = 1;
+uint8_t led_sys_cur_frame = 0;
+uint8_t led_sys_num_frames = 0;
+uint8_t led_sys_crossfade_step = 0;
+uint8_t led_ring_animation = 0;
+uint8_t led_ring_count = 0;
+uint8_t led_ring_animating = 0;
+uint8_t led_ring_looping = 1;
+uint16_t led_ring_cur_frame = 0;
+uint16_t led_ring_num_frames = 0;
+uint8_t led_ring_crossfade = 0;
+uint8_t led_ring_crossfade_step = 0;
+uint8_t led_ring_uberfade = 0;
+uint8_t led_ring_blinking = 0;
+uint16_t led_ring_blink_count = 0;
+QCRing current_ring;
+QCRing next_ring;
 
 #define UBER_FADEOUT_INC 0.1 * FADE_SCALE
 #define UBER_FADEOUT_DELAY 3
@@ -112,14 +132,6 @@ void startTLC() {
   sei();  
 }
 
-uint8_t led_sys_animation = 0;
-uint8_t led_sys_count = 0;
-uint8_t led_sys_animating = 0;
-uint8_t led_sys_looping = 1;
-uint8_t led_sys_cur_frame = 0;
-uint8_t led_sys_num_frames = 0;
-uint8_t led_sys_crossfade_step = 0;
-
 void sys_fade(uint8_t fade)
 {
   uint16_t i;
@@ -178,20 +190,6 @@ uint16_t system_lights_update_loop() {
   return required_delay_millis;
 }
 
-uint8_t led_ring_animation = 0;
-uint8_t led_ring_count = 0;
-uint8_t led_ring_animating = 0;
-uint8_t led_ring_looping = 1;
-uint16_t led_ring_cur_frame = 0;
-uint16_t led_ring_num_frames = 0;
-uint8_t led_ring_crossfade = 0;
-uint8_t led_ring_crossfade_step = 0;
-uint8_t led_ring_uberfade = 0;
-uint8_t led_ring_blinking = 0;
-uint16_t led_ring_blink_count = 0;
-QCRing current_ring;
-QCRing next_ring;
-
 void ring_fade(uint8_t fade) {
   uint16_t i;
   for (i = 0; i < L_SYS; i++) {
@@ -210,7 +208,6 @@ void ring_fade(uint8_t fade) {
   }
 }
 
-// TODO: handle blinking
 uint16_t uber_ring_fade() {
   if (!led_ring_uberfade) return current_ring.ring_delay;
   uint16_t i, j;
@@ -314,7 +311,6 @@ volatile uint8_t new_amplitude_available = 0;
 void setupAdc() {  
   ADMUX = 0b01100110;  // default to AVCC VRef, ADC Left Adjust, and ADC channel 6
   ADCSRB = 0b00000000; // Analog Input bank 1
-  // TODO: Disable this prior to party mode on non-superuber badges.
   ADCSRA = 0b11001111; // ADC enable, ADC start, manual trigger mode, ADC interrupt enable, prescaler = 128
 }
 

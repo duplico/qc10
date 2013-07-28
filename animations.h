@@ -62,6 +62,7 @@ extern uint8_t ring_anim_lengths[];
 extern QCSys heartbeats[][4];
 
 extern QCRing qcr_blinky_short;
+extern QCRing qcr_blinky_long;
 extern QCRing qcr_ubercount_blinky;
 #define BLING_START_INDEX 0
 #define BLING_COUNT 10

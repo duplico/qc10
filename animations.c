@@ -2173,7 +2173,6 @@ QCRing nearbadge[] PROGMEM = {
    0, 0, 0, 0, 0, 0,
    QCR_DELAY}
 }; //nearbadge
-// TODO: Takes too long to return from.
 
 // EFFECT: alternate rings to show superuber at preboot
 #define QCR_DELAY 90
@@ -2372,6 +2371,10 @@ QCRing qcr_blinky_short = {
   0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0,
   90};
+QCRing qcr_blinky_long = {
+  0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0,
+  300};
 QCRing qcr_ubercount_blinky = {
   0, UBER_DIM, UBER_DIM, 0, UBER_DIM, UBER_DIM,
   UBER_DIM, UBER_DIM, UBER_DIM, UBER_DIM, UBER_DIM, UBER_DIM,

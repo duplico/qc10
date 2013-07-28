@@ -12,6 +12,8 @@
 //
 // Otherwise:
 // (c) 13-Dec-2012 George Louthan <georgerlouth@nthefourth.com>
+// (c) 28-Jul-2013 George Louthan <georgerlouth@nthefourth.com>
+//
 // Required fuse settings:
 // lfuse: 0xBF
 // hfuse: 0xDE
@@ -30,8 +32,8 @@ extern "C"
 
 // General (overall system) configuration
 #define UBER_COUNT 10
-#define CONFIG_STRUCT_VERSION 18
-#define STARTING_ID 5
+#define CONFIG_STRUCT_VERSION 1
+#define STARTING_ID 0
 #define BADGES_IN_SYSTEM 105
 #define BADGE_METER_INTERVAL 6
 #define BADGE_FRIENDLY_CUTOFF 60
@@ -40,7 +42,7 @@ extern "C"
 // How many beacon cycles to look at together.
 #define RECEIVE_WINDOW 8 
 // NB: It's nice if the listen duration is divisible by BADGES_IN_SYSTEM 
-#define R_SLEEP_DURATION 8000
+#define R_SLEEP_DURATION 10000
 #define R_LISTEN_DURATION 4410
 #define R_LISTEN_WAKE_PAD 200
 #define R_NUM_SLEEP_CYCLES 10
@@ -242,7 +244,6 @@ static uint8_t save_and_check_badge(uint16_t badge_id) {
     uber_badges_seen++;
   }
   total_badges_seen++;
-  // TODO:
   saveBadge(badge_id);
   return true;
 }
@@ -256,22 +257,22 @@ static void saveConfig() {
         eeprom_write_byte((byte*) i, p[i]);
 }
 
-void setup () {
-    wdt_enable(WDTO_1S);
-#if !(USE_LEDS)
+void setup() {
+  wdt_enable(WDTO_1S);
+  #if !(USE_LEDS)
     Serial.begin(57600);
     Serial.println(57600);
-#else
+  #else
     randomSeed(analogRead(0)); // For randomly choosing blings
-#endif
-    loadConfig();
-    loadBadges();
-    last_time = millis();
-    current_time = millis();
-#if USE_LEDS
+  #endif
+  loadConfig();
+  loadBadges();
+  last_time = millis();
+  current_time = millis();
+  #if USE_LEDS
     startTLC();
     set_system_lights_animation(SYSTEM_PREBOOT_INDEX, LOOP_TRUE, 0);
-    if (1) { // uber
+    if (AM_SUPERUBER) { // uber
       set_ring_lights_animation(SUPERUBER_INDEX, LOOP_FALSE, CROSSFADING, DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
     }
     
@@ -292,7 +293,7 @@ void setup () {
     // TODO: epilepsy warning.
     // heartbeats[SYSTEM_PARTY_INDEX][0][0..2]
     
-#endif
+  #endif
   setupAdc();
 }
 
@@ -339,10 +340,14 @@ void show_badge_count() {
     end_index = 26;
   if (end_index < 13)
     end_index = 13;
-  if (end_index == 13) {
-    // Do the super special animation.
+  if (end_index == 13) { // TODO: Test
+    led_next_ring = set_ring_lights_blink(BADGECOUNT_INDEX, LOOP_FALSE, 
+                                          CROSSFADING, DEFAULT_CROSSFADE_STEP,
+                                          end_index, UBERFADE_TRUE,
+                                          qcr_blinky_long, 16);
+    return;
   }
-
+  // TODO: test
   led_next_ring = set_ring_lights_blink(BADGECOUNT_INDEX, LOOP_FALSE, 
                                         CROSSFADING, DEFAULT_CROSSFADE_STEP,
                                         end_index, UBERFADE_FALSE,
@@ -352,12 +357,13 @@ void show_badge_count() {
 void show_uber_count() {
   if (party_mode)
     return;
-  if (AM_UBER) {
+  if (AM_UBER) { // TODO: test
     // Display "ALL" animation
-    led_next_ring = set_ring_lights_animation(UBERCOUNT_INDEX, LOOP_FALSE, CROSSFADING, 
-                                            DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
+    led_next_ring = set_ring_lights_blink(UBERCOUNT_INDEX, LOOP_FALSE, CROSSFADING, 
+                                          DEFAULT_CROSSFADE_STEP, 17, UBERFADE_TRUE,
+                                          qcr_blinky_long, 16);
   }
-  else {
+  else { // TODO: test
     uint8_t end_index = 7 + uber_badges_seen;
     led_next_ring = set_ring_lights_blink(UBERCOUNT_INDEX, LOOP_FALSE, CROSSFADING, 
                                           DEFAULT_CROSSFADE_STEP, end_index, UBERFADE_FALSE,
@@ -365,8 +371,7 @@ void show_uber_count() {
   }
 }
 
-void do_ring_update() { //uint32_t elapsed_time, uint32_t current_time) {
-  
+void do_ring_update() {
   // Determine whether we should turn on idle
   // force_idle allows us to force a re-up of our idle state.
   if (force_idle || (!led_ring_animating && !idling)) {
@@ -404,7 +409,7 @@ void do_ring_update() { //uint32_t elapsed_time, uint32_t current_time) {
     need_to_show_new_badge = 0;
     led_next_ring = set_ring_lights_animation(NEWBADGE_INDEX, LOOP_FALSE, CROSSFADE_FALSE, 
                                               DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
-    led_next_sys = set_system_lights_animation(SYSTEM_NEWBADGE_INDEX, LOOP_TRUE, 0); // TODO
+    led_next_sys = set_system_lights_animation(SYSTEM_NEWBADGE_INDEX, LOOP_TRUE, 0);
     // Pre-empt the near badge animation.
     need_to_show_near_badge = 0;
   }
@@ -458,12 +463,11 @@ void do_ring_update() { //uint32_t elapsed_time, uint32_t current_time) {
                                               CROSSFADING, 
                                               DEFAULT_CROSSFADE_STEP, 0, AM_SUPERUBER);
     time_since_last_bling = 0; // With longer times, maybe not clear this?
-    // TODO: WTF did I mean by the above?
     idling = 0;
   }
   
   // Just the animation loop:
-  if (led_ring_animating && current_time >= led_next_ring) { // TODO: ISRs
+  if (led_ring_animating && current_time >= led_next_ring) {
     led_next_ring = ring_lights_update_loop() + current_time;
   }
   if (current_time >= led_next_uber_fade) {
@@ -472,7 +476,6 @@ void do_ring_update() { //uint32_t elapsed_time, uint32_t current_time) {
 }
 
 void do_sys_update() {
-  // TODO: ISR
   if (led_sys_animating && current_time >= led_next_sys) {
     led_next_sys = system_lights_update_loop() + current_time;
   }
