@@ -660,6 +660,8 @@ void loop () {
       my_authority = lowest_badge_this_cycle;
       lowest_badge_this_cycle = config.badge_id;
       cycle_number = 0;
+    }
+    else if (cycle_number == R_NUM_SLEEP_CYCLES - 1) {
       // Let's also show our current badge count.
       // Doing it like this should let people compare!
       if (need_to_show_badge_count == 0) need_to_show_badge_count = 1;
