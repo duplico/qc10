@@ -276,9 +276,18 @@ void setup () {
     }
     
     // Setup my party flasher to be a random color:
-    heartbeats[SYSTEM_PARTY_INDEX][0].f_red = random(1,255);
-    heartbeats[SYSTEM_PARTY_INDEX][0].f_grn = random(1, 255-heartbeats[SYSTEM_PARTY_INDEX][0].f_red);
-    heartbeats[SYSTEM_PARTY_INDEX][0].f_blu = 255 - heartbeats[SYSTEM_PARTY_INDEX][0].f_red - heartbeats[SYSTEM_PARTY_INDEX][0].f_grn;
+    heartbeats[SYSTEM_PARTY_INDEX][0].f_red = random(0,2) * 96;
+    heartbeats[SYSTEM_PARTY_INDEX][0].f_grn = random(0,2) * 96;
+    heartbeats[SYSTEM_PARTY_INDEX][0].f_blu = random(0,2) * 96;
+    if (!heartbeats[SYSTEM_PARTY_INDEX][0].f_red && !heartbeats[SYSTEM_PARTY_INDEX][0].f_grn && heartbeats[SYSTEM_PARTY_INDEX][0].f_blu) {
+      heartbeats[SYSTEM_PARTY_INDEX][0].f_red = 96;
+      heartbeats[SYSTEM_PARTY_INDEX][0].f_blu = 48;
+    }
+    
+    heartbeats[11][0].f_red = heartbeats[SYSTEM_PARTY_INDEX][0].f_red;
+    heartbeats[11][0].f_grn = heartbeats[SYSTEM_PARTY_INDEX][0].f_grn;
+    heartbeats[11][0].f_blu = heartbeats[SYSTEM_PARTY_INDEX][0].f_blu;
+    
     
     // TODO: epilepsy warning.
     // heartbeats[SYSTEM_PARTY_INDEX][0][0..2]

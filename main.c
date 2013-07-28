@@ -330,7 +330,7 @@ volatile uint16_t volume_samples = 0;
 volatile float volume_avg = 0;
 volatile uint8_t volume_peaking = 0;
 volatile uint8_t volume_peaking_last = 0;
-#define VOLUME_THRESHOLD 0.1
+#define VOLUME_THRESHOLD 0.05
 #define PEAKS_TO_PARTY 20
 #define PARTY_PEAKS_INTERVAL 200
 #define PARTY_TIME 1000
