@@ -33,7 +33,7 @@ extern "C"
 
 // General (overall system) configuration
 #define UBER_COUNT 10
-#define CONFIG_STRUCT_VERSION 16
+#define CONFIG_STRUCT_VERSION 17
 #define STARTING_ID 5
 #define BADGES_IN_SYSTEM 105
 #define BADGE_METER_INTERVAL 6
@@ -182,6 +182,9 @@ static void loadConfig() {
       
       memset(badges_seen, 0, BADGES_IN_SYSTEM);
       badges_seen[config.badge_id] = 1;
+      for (i = 0; i<BADGES_IN_SYSTEM; i++) {
+        saveBadge(i);
+      }
       saveBadge(config.badge_id);
       total_badges_seen++;
       if (config.badge_id < UBER_COUNT)
