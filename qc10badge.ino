@@ -258,6 +258,7 @@ static void saveConfig() {
 }
 
 void setup() {
+    delay(100);
   wdt_enable(WDTO_1S);
   #if !(USE_LEDS)
     Serial.begin(57600);
