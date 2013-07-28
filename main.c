@@ -325,7 +325,7 @@ void disableAdc() {
 
 volatile float volume_sums = 0;
 volatile uint16_t volume_samples = 0;
-#define VOLUME_INTERVAL 500
+#define VOLUME_INTERVAL 5000
 volatile float volume_avg = 0;
 volatile uint8_t volume_peaking = 0;
 volatile uint8_t volume_peaking_last = 0;
