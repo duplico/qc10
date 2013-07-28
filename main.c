@@ -323,16 +323,17 @@ void disableAdc() {
 }
 
 
+// The units for the following time intervals are, approximately, centiseconds.
 volatile float volume_sums = 0;
 volatile uint16_t volume_samples = 0;
-#define VOLUME_INTERVAL 5000
+#define VOLUME_INTERVAL 100
 volatile float volume_avg = 0;
 volatile uint8_t volume_peaking = 0;
 volatile uint8_t volume_peaking_last = 0;
 #define VOLUME_THRESHOLD 0.3
 #define PEAKS_TO_PARTY 20
 #define PARTY_PEAKS_INTERVAL 200
-#define PARTY_TIME 15000
+#define PARTY_TIME 7500
 #define AUDIO_SPIKE volume_peaking && !volume_peaking_last
 volatile uint8_t num_peaks = 0;
 volatile uint8_t peak_samples = 0;
@@ -367,7 +368,7 @@ ISR(ADC_vect) { // Analog->Digital Conversion Complete
       signal_max = adc_value;
     else if (adc_value < signal_min)
       signal_min = adc_value;
-    if (sample_count == 100) { // Happens about 1000 times per second.
+    if (sample_count == 100) { // Happens about 100 times per second:
       adc_amplitude = signal_max - signal_min;
       voltage = (adc_amplitude * 3.3) / 256;
       signal_min = 255;
@@ -391,6 +392,8 @@ ISR(ADC_vect) { // Analog->Digital Conversion Complete
         volume_avg = volume_sums / volume_samples;
         volume_sums = volume_avg + voltage;
         volume_samples = 2;
+        // DEBUG: flash a light.
+        led_next_sys = set_system_lights_animation(10, LOOP_FALSE, 0); // TODO: don't do this.
       }
       else {
         volume_samples++;
