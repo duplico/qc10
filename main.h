@@ -252,8 +252,6 @@ struct {
     uint8_t freq, rcv_group, rcv_id, bcn_group, bcn_id;
     uint16_t badge_id;
     uint16_t badges_in_system;
-    uint16_t r_sleep_duration, r_listen_duration, r_listen_wake_pad,
-             r_num_sleep_cycles;
 } config;
 
 

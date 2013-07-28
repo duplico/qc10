@@ -16,9 +16,6 @@
 // lfuse: 0xBF
 // hfuse: 0xDE
 
-// TODO: Communication difficulties.
-// TODO: Battery issues.
-
 #include <JeeLib.h>
 #include <avr/eeprom.h>
 #include <avr/pgmspace.h>
@@ -174,21 +171,16 @@ static void loadConfig() {
       config.bcn_id = 1;
       config.badge_id = STARTING_ID;
       config.badges_in_system = BADGES_IN_SYSTEM;
-      config.r_sleep_duration = R_SLEEP_DURATION;
-      config.r_listen_duration = R_LISTEN_DURATION;
-      config.r_listen_wake_pad = R_LISTEN_WAKE_PAD;
-      config.r_num_sleep_cycles = R_NUM_SLEEP_CYCLES;
-      saveConfig();
       
       memset(badges_seen, 0, BADGES_IN_SYSTEM);
       badges_seen[config.badge_id] = 1;
-      for (i = 0; i<BADGES_IN_SYSTEM; i++) {
+      for (uint8_t i = 0; i<BADGES_IN_SYSTEM; i++) {
         saveBadge(i);
       }
-      saveBadge(config.badge_id);
       total_badges_seen++;
       if (config.badge_id < UBER_COUNT)
         uber_badges_seen++;
+      saveConfig();
   }
 
   // Store the parts of our config that rarely change in the outgoing payload.
@@ -202,8 +194,8 @@ static void loadConfig() {
     
   lowest_badge_this_cycle = config.badge_id;
   my_authority = config.badge_id;
-  t_to_send = config.r_sleep_duration + (config.r_listen_wake_pad / 2) + 
-              ((config.r_listen_duration - config.r_listen_wake_pad) 
+  t_to_send = R_SLEEP_DURATION + (R_LISTEN_WAKE_PAD / 2) + 
+              ((R_LISTEN_DURATION - R_LISTEN_WAKE_PAD) 
                / config.badges_in_system) * config.badge_id;
 }
 
@@ -258,7 +250,6 @@ static void saveConfig() {
     byte* p = (byte*) &config;
     for (byte i = 0; i < sizeof config; ++i)
         eeprom_write_byte((byte*) i, p[i]);
-    loadConfig();
 }
 
 void setup () {
@@ -512,7 +503,7 @@ void loop () {
   
   //////// RADIO SECTION /////////
   // Radio duty cycle.
-  if (cycle_number != 1 && t < config.r_sleep_duration) {
+  if (cycle_number != 1 && t < R_SLEEP_DURATION) {
     // Radio sleeps unless we're in the last sleep cycle of an interval
     if (!badge_is_sleeping) {
       // Go to sleep if necessary, printing cycle information.
@@ -521,7 +512,7 @@ void loop () {
       Serial.print("--|Cycle ");
       Serial.print(cycle_number);
       Serial.print("/");
-      Serial.print(config.r_num_sleep_cycles);
+      Serial.print(R_NUM_SLEEP_CYCLES);
       Serial.print(" t:");
       Serial.println(t);
       Serial.println("--|Sleeping radio.");
@@ -529,7 +520,7 @@ void loop () {
       badge_is_sleeping = true;
     }
   }
-  else if (t < config.r_sleep_duration + config.r_listen_duration) {
+  else if (t < R_SLEEP_DURATION + R_LISTEN_DURATION) {
     // This is the part of the sleep cycle during which we should be listening
     if (badge_is_sleeping) {
       // Wake up if necessary, printing cycle information.
@@ -538,7 +529,7 @@ void loop () {
         Serial.print("--|Cycle ");
         Serial.print(cycle_number);
         Serial.print("/");
-        Serial.print(config.r_num_sleep_cycles);
+        Serial.print(R_NUM_SLEEP_CYCLES);
         Serial.print(" t:");
         Serial.println(t);
         Serial.println("--|Waking radio.");
@@ -644,7 +635,7 @@ void loop () {
     window_position = (window_position + 1) % RECEIVE_WINDOW;
     neighbor_counts[window_position] = 0;
 #if USE_LEDS
-    set_gaydar_state(neighbor_count); // TODO: Is this still happening inappropriately?
+    set_gaydar_state(neighbor_count);
 #else
     Serial.print("--|Update: ");
     Serial.print(neighbor_count);
@@ -658,7 +649,7 @@ void loop () {
       }
     }
     sent_this_cycle = false;
-    if (cycle_number > config.r_num_sleep_cycles) {
+    if (cycle_number > R_NUM_SLEEP_CYCLES) {
       // Time for a new interval
       my_authority = lowest_badge_this_cycle;
       lowest_badge_this_cycle = config.badge_id;
