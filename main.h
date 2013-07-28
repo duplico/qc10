@@ -217,4 +217,49 @@ extern volatile float voltage;
 extern volatile uint8_t new_amplitude_available;
 void setupAdc();
 
+void leave_party_mode();
+void enter_party_mode(uint16_t);
+extern uint8_t party_mode;
+extern uint16_t party_time;
+
+
+// from the stupid arduino file:
+extern uint8_t force_idle; // TODO: volatile
+extern uint8_t current_sys; // TODO: volatile
+extern uint8_t neighbor_count;
+extern uint8_t in_preboot;
+extern uint8_t idling;
+extern uint32_t led_next_sys;
+
+// Convenience macros
+#define AM_UBER (uber_badges_seen >= UBER_COUNT)
+#define AM_SUPERUBER (config.badge_id < UBER_COUNT)
+#define AM_FRIENDLY (total_badges_seen > BADGE_FRIENDLY_CUTOFF)
+
+#define LOOP_TRUE 1
+#define LOOP_FALSE 0
+
+#define UBERFADE_TRUE 1
+#define UBERFADE_FALSE 0
+
+#define CROSSFADE_TRUE 1
+#define CROSSFADE_FALSE 0
+
+// Configuration settings struct, to be stored on the EEPROM.
+struct {
+    uint8_t check;
+    uint8_t freq, rcv_group, rcv_id, bcn_group, bcn_id;
+    uint16_t badge_id;
+    uint16_t badges_in_system;
+    uint16_t r_sleep_duration, r_listen_duration, r_listen_wake_pad,
+             r_num_sleep_cycles;
+} config;
+
+
+
+
+
+
+
+
 #endif

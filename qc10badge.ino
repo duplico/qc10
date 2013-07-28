@@ -56,25 +56,11 @@ extern "C"
 #define PREBOOT_SHOW_UBERCOUNT_AT 12500
 #define CROSSFADING 1
 
-// Convenience macros
-#define AM_UBER (uber_badges_seen >= UBER_COUNT)
-#define AM_SUPERUBER (config.badge_id < UBER_COUNT)
-#define AM_FRIENDLY (total_badges_seen > BADGE_FRIENDLY_CUTOFF)
-
-#define LOOP_TRUE 1
-#define LOOP_FALSE 0
-
-#define UBERFADE_TRUE 1
-#define UBERFADE_FALSE 0
-
-#define CROSSFADE_TRUE 1
-#define CROSSFADE_FALSE 0
-
 // Look at all my global state!!!
 // Timing
-unsigned long last_time;
-unsigned long current_time;
-unsigned long elapsed_time;
+uint32_t last_time;
+uint32_t current_time;
+uint32_t elapsed_time;
 
 // Gaydar
 uint8_t neighbor_counts[RECEIVE_WINDOW] = {0};
@@ -102,13 +88,11 @@ uint8_t shown_badgecount = 0;
 uint8_t shown_ubercount = 0;
 uint8_t in_preboot = 1;
 uint8_t current_sys = 0;
-unsigned long led_next_ring = 0;
-unsigned long led_next_uber_fade = 0;
-unsigned long led_next_sys = 0;
+uint32_t led_next_ring = 0;
+uint32_t led_next_uber_fade = 0;
+uint32_t led_next_sys = 0;
 uint8_t idling = 1;
 uint8_t force_idle = 0;
-uint16_t party_time = 0;
-uint8_t party_mode = 0;
 uint8_t need_to_show_near_badge = 0;
 uint8_t need_to_show_new_badge = 0;
 uint8_t need_to_show_uber_count = 1;
@@ -133,15 +117,7 @@ uint16_t my_authority = BADGES_IN_SYSTEM;
 uint16_t lowest_badge_this_cycle = BADGES_IN_SYSTEM;
 uint8_t badge_is_sleeping = 1;
 
-// Configuration settings struct, to be stored on the EEPROM.
-struct {
-    uint8_t check;
-    uint8_t freq, rcv_group, rcv_id, bcn_group, bcn_id;
-    uint16_t badge_id;
-    uint16_t badges_in_system;
-    uint16_t r_sleep_duration, r_listen_duration, r_listen_wake_pad,
-             r_num_sleep_cycles;
-} config;
+
 
 // Payload struct
 struct qcbpayload {
@@ -380,107 +356,12 @@ void show_uber_count() {
   }
 }
 
-float volume_sums = 0;
-uint16_t volume_samples = 0;
-float volume_avg = 0;
-uint16_t volume_time_since = 0;
-uint8_t volume_peaking = 0;
-uint8_t volume_peaking_last = 0;
-#define VOLUME_INTERVAL 2000
-#define VOLUME_THRESHOLD 0.3
-#define PEAKS_TO_PARTY 20
-#define PARTY_PEAKS_INTERVAL 2000
-#define PARTY_TIME 10000
-#define AUDIO_SPIKE volume_peaking && !volume_peaking_last
-uint16_t peak_interval_time = 0;
-uint8_t num_peaks = 0;
 
-void enter_party_mode(uint16_t duration) {
-  party_mode = 1;
-  force_idle = 1;
-  party_time = duration;
-  current_sys = SYSTEM_BLANK_INDEX; // Blank the system lights.
-}
 
-void leave_party_mode() {
-  party_mode = 0;
-  party_time = 0;
-  force_idle = 1;
-  set_gaydar_state(neighbor_count);
-}
+
 
 // Run at VOLUME_INTERVAL:
 void do_volume_detect(uint32_t elapsed_time) {
-  // Adjust timing state:
-  volume_time_since += elapsed_time;
-  peak_interval_time += elapsed_time;
-  
-  // If we need to restart our running count of peaks for party mode entry:
-  if (peak_interval_time > PARTY_PEAKS_INTERVAL) {
-    num_peaks = 0;
-    peak_interval_time = 0;
-  }
-  // We listen for VOLUME_INTERVAL milliseconds to establish an average
-  // background noise level. Then we store it as the volume_avg,
-  // clear the average counter, and use that average as the first sample
-  // in the next volume average.
-  if (volume_time_since > VOLUME_INTERVAL) {
-    volume_time_since = 0;
-    volume_avg = volume_sums / volume_samples;
-    volume_sums = volume_avg;
-    volume_samples = 1;
-  }
-  volume_peaking_last = volume_peaking;
-  // If our ADC ISR has generated a new sound sample,
-  // add it to our running volume average counters.
-  if (new_amplitude_available) {
-    volume_sums += voltage;
-    volume_samples++;
-    // Then, if it's sufficiently larger than the average,
-    // set the volume peaking flag, having stored the previous one.
-    if (voltage > volume_avg + VOLUME_THRESHOLD) {
-      volume_peaking = 1;
-    }
-    else {
-      volume_peaking = 0;
-    }
-    new_amplitude_available = 0;
-  }
-  #if !(USE_LEDS)
-    if (AUDIO_SPIKE) {
-      Serial.print("Peak at ");
-      Serial.print(voltage);
-      Serial.print(" vs avg ");
-      Serial.println(volume_avg);
-    }
-  #endif
-
-  // If we're eligible to listen for clicks to turn on party mode:
-  if (!party_mode && AM_SUPERUBER && !in_preboot && AUDIO_SPIKE) {
-    num_peaks++;
-    if (num_peaks > PEAKS_TO_PARTY) { // PARTY TIME!
-      // We need to set our party timer to the number of milliseconds for which
-      // we want to be in party mode. Since party mode is contagious, we'd like
-      // all the other badges to spend about PARTY_TIME in party mode,
-      // so we add the expected number of milliseconds between now and when we
-      // send a beacon to our own party_time:
-      if (t_to_send >= t)  { // Current cycle's time to send is in the future
-        enter_party_mode(PARTY_TIME + (t_to_send - t));
-      } else { // Current cycle's time to send is in the past:
-        enter_party_mode(PARTY_TIME + config.r_sleep_duration + 
-                         config.r_listen_duration - t + t_to_send);
-        // TODO: we could use the need_to_send flag or similar for this instead.
-      }
-    }
-  }
-  // If we're in party mode, decrement the party timer.
-  // Then determine whether we should turn off party mode:
-  if (party_mode && party_time <= elapsed_time) {
-    leave_party_mode();
-  }
-  else if (party_mode) {
-    party_time -= elapsed_time;
-  }
 }
 
 void do_ring_update() { //uint32_t elapsed_time, uint32_t current_time) {
@@ -594,19 +475,6 @@ void do_sys_update() {
   if (led_sys_animating && current_time >= led_next_sys) {
     led_next_sys = system_lights_update_loop() + current_time;
   }
-  
-  // Happens many times, only in preboot:
-  if (in_preboot && idling) {
-      if (AUDIO_SPIKE) {
-        // We've detected a new beat.
-        led_next_sys = set_system_lights_animation(11, LOOP_FALSE, 0);
-      }
-  }
-  if (party_mode && idling && AUDIO_SPIKE) {
-    // We've detected a new beat.
-    led_next_sys = set_system_lights_animation(SYSTEM_PARTY_INDEX, LOOP_FALSE, 0);
-  }
-  
   // If we're booted and either (a) not showing an animation or
   //   (b) just finished the newbadge animation.
   //   go back to heartbeat and/or blank-for-party.
@@ -614,6 +482,7 @@ void do_sys_update() {
       (!led_sys_animating || 
        (idling && led_sys_animation != current_sys))) {
     // Go back to heartbeating (or blank in party mode)
+    set_gaydar_state(neighbor_count); // Make sure we use the right heartbeat.
     led_next_sys = set_system_lights_animation(current_sys, LOOP_TRUE, 0);
   }
 }

@@ -311,29 +311,117 @@ volatile uint8_t adc_value = 0;
 volatile float voltage = 0;
 volatile uint8_t new_amplitude_available = 0;
 
+
+
 void setupAdc() {  
   ADMUX = 0b01100110;  // default to AVCC VRef, ADC Left Adjust, and ADC channel 6
   ADCSRB = 0b00000000; // Analog Input bank 1
   ADCSRA = 0b11001111; // ADC enable, ADC start, manual trigger mode, ADC interrupt enable, prescaler = 128
 }
 
+
+volatile float volume_sums = 0;
+volatile uint16_t volume_samples = 0;
+#define VOLUME_INTERVAL 2000
+volatile float volume_avg = 0;
+volatile uint8_t volume_peaking = 0;
+volatile uint8_t volume_peaking_last = 0;
+#define VOLUME_THRESHOLD 0.3
+#define PEAKS_TO_PARTY 20
+#define PARTY_PEAKS_INTERVAL 2000
+#define PARTY_TIME 75000
+#define AUDIO_SPIKE volume_peaking && !volume_peaking_last
+volatile uint8_t num_peaks = 0;
+volatile uint8_t peak_samples = 0;
+uint8_t party_mode = 0;
+uint16_t party_time = 0;
+
+/* Undeclared:
+ *  party_mode
+ *  
+ *
+ *
+ */
+
+ void enter_party_mode(uint16_t duration) {
+  party_mode = 1;
+  force_idle = 1;
+  party_time = duration;
+  current_sys = SYSTEM_BLANK_INDEX; // Blank the system lights.
+}
+
+void leave_party_mode() {
+  party_mode = 0;
+  party_time = 0;
+  force_idle = 1;
+}
+ 
 ISR(ADC_vect) { // Analog->Digital Conversion Complete
   if ((ADMUX & 0b00000111) == 6) { // Channel 6:
-    adc_value = ADCH;  // store ADC result (8-bir precision)
+    adc_value = ADCH;  // store ADC result (8-bit precision)
     ADCSRA |= 0b11000000;  // manually trigger the next ADC
     sample_count++;
     if (adc_value > signal_max)
       signal_max = adc_value;
     else if (adc_value < signal_min)
       signal_min = adc_value;
-    if (sample_count == 100) {
+    if (sample_count == 100) { // Happens about 1000 times per second.
       adc_amplitude = signal_max - signal_min;
       voltage = (adc_amplitude * 3.3) / 256;
-      new_amplitude_available = 1;
-      
       signal_min = 255;
       signal_max = 0;
       sample_count = 0;
+      
+      // If we need to restart our running count of peaks for party mode entry:
+      if (peak_samples > PARTY_PEAKS_INTERVAL) {
+        num_peaks = 0;
+        peak_samples = 0;
+      }
+      else {
+        peak_samples++;
+      }
+      // We listen for VOLUME_INTERVAL milliseconds to establish an average
+      // background noise level. Then we store it as the volume_avg,
+      // clear the average counter, and use that average as the first sample
+      // in the next volume average.
+      if (volume_samples > VOLUME_INTERVAL) {
+        volume_avg = volume_sums / volume_samples;
+        volume_sums = volume_avg;
+        volume_samples = 1;
+      }
+      volume_peaking_last = volume_peaking;
+      volume_sums += voltage;
+      volume_samples++;
+      // Then, if it's sufficiently larger than the average,
+      // set the volume peaking flag, having stored the previous one.
+      if (voltage > volume_avg + VOLUME_THRESHOLD) {
+        volume_peaking = 1;
+      }
+      else {
+        volume_peaking = 0;
+      }
+      
+      // If we're eligible to listen for clicks to turn on party mode:
+      if (!party_mode && AM_SUPERUBER && !in_preboot && AUDIO_SPIKE) {
+        num_peaks++;
+        if (num_peaks > PEAKS_TO_PARTY) { // PARTY TIME!
+          enter_party_mode(PARTY_TIME);
+        }
+      } else if (AUDIO_SPIKE && party_mode && idling) {
+        // We've detected a new beat.
+        led_next_sys = set_system_lights_animation(SYSTEM_PARTY_INDEX, 
+                                                   LOOP_FALSE, 0);
+      } else if (AUDIO_SPIKE && in_preboot && idling) {
+          led_next_sys = set_system_lights_animation(11, LOOP_FALSE, 0);
+      }
+      // If we're in party mode, decrement the party timer.
+      // Then determine whether we should turn off party mode:
+      if (party_mode && party_time  == 0) {
+        leave_party_mode();
+      }
+      else if (party_mode) {
+        party_time--;
+      }
     }
   }
 };
