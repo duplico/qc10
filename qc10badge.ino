@@ -496,6 +496,9 @@ void do_led_control(uint32_t elapsed_time) {
   if (in_preboot && current_time > PREBOOT_INTERVAL) {
     in_preboot = 0;
     force_idle = 1;
+    if (!AM_SUPERUBER) {
+      disableAdc();
+    }
   }
   
   if (in_preboot) return; // Don't look for other badges in preboot.

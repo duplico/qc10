@@ -216,6 +216,7 @@ extern volatile uint8_t adc_amplitude;
 extern volatile float voltage;
 extern volatile uint8_t new_amplitude_available;
 void setupAdc();
+void disableAdc();
 
 void leave_party_mode();
 void enter_party_mode(uint16_t);

@@ -316,7 +316,12 @@ volatile uint8_t new_amplitude_available = 0;
 void setupAdc() {  
   ADMUX = 0b01100110;  // default to AVCC VRef, ADC Left Adjust, and ADC channel 6
   ADCSRB = 0b00000000; // Analog Input bank 1
+  // TODO: Disable this prior to party mode on non-superuber badges.
   ADCSRA = 0b11001111; // ADC enable, ADC start, manual trigger mode, ADC interrupt enable, prescaler = 128
+}
+
+void disableAdc() {
+  ADCSRA = 0;
 }
 
 
@@ -344,6 +349,9 @@ uint16_t party_time = 0;
  */
 
  void enter_party_mode(uint16_t duration) {
+  if (!AM_SUPERUBER) {
+    setupAdc();
+  }
   party_mode = 1;
   force_idle = 1;
   party_time = duration;
@@ -351,6 +359,9 @@ uint16_t party_time = 0;
 }
 
 void leave_party_mode() {
+  if (!AM_SUPERUBER) {
+    disableAdc();
+  }
   party_mode = 0;
   party_time = 0;
   force_idle = 1;
