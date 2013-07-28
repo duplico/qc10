@@ -332,7 +332,7 @@ volatile uint8_t volume_peaking_last = 0;
 #define VOLUME_THRESHOLD 0.3
 #define PEAKS_TO_PARTY 20
 #define PARTY_PEAKS_INTERVAL 200
-#define PARTY_TIME 75000
+#define PARTY_TIME 15000
 #define AUDIO_SPIKE volume_peaking && !volume_peaking_last
 volatile uint8_t num_peaks = 0;
 volatile uint8_t peak_samples = 0;
@@ -374,6 +374,15 @@ ISR(ADC_vect) { // Analog->Digital Conversion Complete
       signal_max = 0;
       sample_count = 0;
       
+      // If we're in party mode, decrement the party timer.
+      // Then determine whether we should turn off party mode:
+      if (party_mode && party_time  == 0) {
+        leave_party_mode();
+      }
+      else if (party_mode) {
+        party_time--;
+      }
+      
       // We listen for VOLUME_INTERVAL samples to establish an average
       // background noise level. Then we store it as the volume_avg,
       // clear the average counter, and use that average as the first sample
@@ -414,15 +423,6 @@ ISR(ADC_vect) { // Analog->Digital Conversion Complete
                                                    LOOP_FALSE, 0);
       } else if (AUDIO_SPIKE && in_preboot && idling) { // Or if we're testing:
           led_next_sys = set_system_lights_animation(11, LOOP_FALSE, 0);
-      }
-      
-      // If we're in party mode, decrement the party timer.
-      // Then determine whether we should turn off party mode:
-      if (party_mode && party_time  == 0) {
-        leave_party_mode();
-      }
-      else if (party_mode) {
-        party_time--;
       }
     }
   }

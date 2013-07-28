@@ -426,7 +426,7 @@ void do_ring_update() { //uint32_t elapsed_time, uint32_t current_time) {
   //  Happens if we were lonely (no neighbors) and now I have 1+ neighbors.
   //  Preemptive.
   // Happens ONLY due to radio action (can't even be triggered in preboot, when radio is off):
-  if (need_to_show_near_badge) {
+  if (need_to_show_near_badge && !party_mode) {
     idling = 0;
     force_idle = 0; // Don't permit idle interruptions of this.
     need_to_show_near_badge = 0;
@@ -440,7 +440,7 @@ void do_ring_update() { //uint32_t elapsed_time, uint32_t current_time) {
   // Happens due to the passage of time.
   // Cannot be triggered in preboot, because in preboot, 
   //  time_since_last_bling doesn't increment.
-  if (idling && (time_since_last_bling > seconds_between_blings * 1000)) {
+  if (idling && !party_mode && (time_since_last_bling > seconds_between_blings * 1000)) {
     // Time to do a "bling":
     current_bling = random(BLING_START_INDEX, 
                            BLING_START_INDEX + BLING_COUNT + (AM_FRIENDLY ? UBLING_COUNT : 0));
