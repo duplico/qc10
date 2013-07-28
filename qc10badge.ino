@@ -159,8 +159,6 @@ static void loadConfig() {
   byte* p = (byte*) &config;
   for (byte i = 0; i < sizeof config; ++i)
       p[i] = eeprom_read_byte((byte*) i);
-  total_badges_seen = 0;
-  uber_badges_seen = 0;
   // if loaded config is not valid, replace it with defaults
   if (config.check != CONFIG_STRUCT_VERSION) {
       config.check = CONFIG_STRUCT_VERSION;
@@ -172,6 +170,8 @@ static void loadConfig() {
       config.badge_id = STARTING_ID;
       config.badges_in_system = BADGES_IN_SYSTEM;
       
+      total_badges_seen = 0;
+      uber_badges_seen = 0;
       memset(badges_seen, 0, BADGES_IN_SYSTEM);
       badges_seen[config.badge_id] = 1;
       for (uint8_t i = 0; i<BADGES_IN_SYSTEM; i++) {
@@ -321,7 +321,9 @@ void show_badge_count() {
   if (party_mode)
     return;
   // 13 is all. 24 is none.
-  uint8_t end_index = 26 - (total_badges_seen-1) / BADGE_METER_INTERVAL;
+  uint8_t end_index = 25 - (total_badges_seen / BADGE_METER_INTERVAL);
+  if (total_badges_seen == 1)
+    end_index = 26;
   if (end_index < 13)
     end_index = 13;
   if (end_index == 13) {

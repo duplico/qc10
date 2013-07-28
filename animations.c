@@ -2173,7 +2173,7 @@ QCRing nearbadge[] PROGMEM = {
    0, 0, 0, 0, 0, 0,
    QCR_DELAY}
 }; //nearbadge
-
+// TODO: Takes too long to return from.
 
 // EFFECT: alternate rings to show superuber at preboot
 #define QCR_DELAY 90
