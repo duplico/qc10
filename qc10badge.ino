@@ -237,7 +237,8 @@ static void loadBadges() {
   total_badges_seen = 0;
   uber_badges_seen = 0;
   for (byte i = 0; i < BADGES_IN_SYSTEM; i++) {
-    badges_seen[i] = (eeprom_read_byte((byte*) (i + sizeof config)) || i==config.badge_id);
+    badges_seen[i] = (eeprom_read_byte((byte*) (i + sizeof config)) 
+                      || i==config.badge_id); // Count ourselves.
     total_badges_seen += badges_seen[i];
     if (i < UBER_COUNT) {
       uber_badges_seen += badges_seen[i];
@@ -300,7 +301,11 @@ void setup () {
       set_ring_lights_animation(SUPERUBER_INDEX, LOOP_FALSE, CROSSFADING, DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
     }
     
-    // TODO: set party flasher according to my ID.
+    // Setup my party flasher to be a random color:
+    heartbeats[SYSTEM_PARTY_INDEX][0][0] = random(1,255);
+    heartbeats[SYSTEM_PARTY_INDEX][0][1] = random(1, 255-heartbeats[SYSTEM_PARTY_INDEX][0][0]);
+    heartbeats[SYSTEM_PARTY_INDEX][0][2] = 255 - heartbeats[SYSTEM_PARTY_INDEX][0][0] - heartbeats[SYSTEM_PARTY_INDEX][0][1];
+    
     // TODO: epilepsy warning.
     // heartbeats[SYSTEM_PARTY_INDEX][0][0..2]
     
@@ -481,7 +486,6 @@ void do_volume_detect(uint32_t elapsed_time) {
 void do_ring_update() { //uint32_t elapsed_time, uint32_t current_time) {
   
   // Determine whether we should turn on idle
-  // TODO: Interrupt idle upon leaving preboot
   // force_idle allows us to force a re-up of our idle state.
   if (force_idle || (!led_ring_animating && !idling)) {
     idling = 1;
