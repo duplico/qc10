@@ -49,11 +49,11 @@ extern "C"
 
 // LED configuration
 #define USE_LEDS 1
-#define DEFAULT_CROSSFADE_STEP 2
 #define PREBOOT_INTERVAL 20000
 #define PREBOOT_SHOW_COUNT_AT 2000
 #define PREBOOT_SHOW_UBERCOUNT_AT 12500
 #define CROSSFADING 1
+#define DEFAULT_CROSSFADE_STEP 2
 
 // Look at all my global state!!!
 // Timing
@@ -248,9 +248,7 @@ static uint8_t save_and_check_badge(uint16_t badge_id) {
   return true;
 }
 
-// Save our current configuration to the EEPROM. Also calls loadConfig().
-// In general, this should be called after any configuration change because it
-// does a little housekeeping.
+// Save our current configuration to the EEPROM.
 static void saveConfig() {
     byte* p = (byte*) &config;
     for (byte i = 0; i < sizeof config; ++i)
@@ -345,10 +343,9 @@ void show_badge_count() {
     led_next_ring = set_ring_lights_blink(BADGECOUNT_INDEX, LOOP_FALSE, 
                                           CROSSFADING, DEFAULT_CROSSFADE_STEP,
                                           end_index, UBERFADE_TRUE,
-                                          qcr_blinky_long, 8);
+                                          qcr_blinky_long, 9);
     return;
   }
-  // TODO: test
   led_next_ring = set_ring_lights_blink(BADGECOUNT_INDEX, LOOP_FALSE, 
                                         CROSSFADING, DEFAULT_CROSSFADE_STEP,
                                         end_index, UBERFADE_FALSE,
@@ -358,13 +355,13 @@ void show_badge_count() {
 void show_uber_count() {
   if (party_mode)
     return;
-  if (AM_UBER) { // TODO: test
+  if (AM_UBER) {
     // Display "ALL" animation
     led_next_ring = set_ring_lights_blink(UBERCOUNT_INDEX, LOOP_FALSE, CROSSFADING, 
                                           DEFAULT_CROSSFADE_STEP, 17, UBERFADE_TRUE,
-                                          qcr_blinky_long, 8);
+                                          qcr_blinky_long, 6);
   }
-  else { // TODO: test
+  else {
     uint8_t end_index = 7 + uber_badges_seen;
     led_next_ring = set_ring_lights_blink(UBERCOUNT_INDEX, LOOP_FALSE, CROSSFADING, 
                                           DEFAULT_CROSSFADE_STEP, end_index, UBERFADE_FALSE,
@@ -462,7 +459,7 @@ void do_ring_update() {
     
     led_next_ring = set_ring_lights_animation(BLING_START_INDEX + current_bling, LOOP_FALSE, 
                                               CROSSFADING, 
-                                              DEFAULT_CROSSFADE_STEP, 0, AM_UBER);
+                                              1, 0, AM_UBER || AM_SUPERUBER);
     time_since_last_bling = 0; // With longer times, maybe not clear this?
     idling = 0;
   }
