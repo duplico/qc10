@@ -593,7 +593,7 @@ void loop () {
                 enter_party_mode(in_payload.party);
               }
             }
-            if (in_payload.authority < my_authority || (in_payload.authority == my_authority && in_payload.from_id < config.badge_id)) {
+            if (neighbor_count == 0 || in_payload.authority < my_authority || (in_payload.authority == my_authority && in_payload.from_id < config.badge_id)) {
             #if !(USE_LEDS)
               Serial.print("|--Detected a higher authority ");
               Serial.print(in_payload.authority);
@@ -604,7 +604,9 @@ void loop () {
               Serial.print(" and t by ");
               Serial.println((int)in_payload.timestamp - (int)t);
             #endif
-            my_authority = in_payload.authority;
+            // We're going to sync with the first badge we see, regardless of
+            // its authority.
+            my_authority = min(in_payload.authority, my_authority);
             cycle_number = in_payload.cycle_number;
             t = in_payload.timestamp;
           }
