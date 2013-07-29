@@ -331,7 +331,7 @@ volatile uint8_t volume_peaking_last = 0;
 #define PEAKS_TO_PARTY 20
 #define PARTY_PEAKS_INTERVAL 200
 // TODO: make longer than 1000 centiseconds.
-#define PARTY_TIME 1000
+#define PARTY_TIME 8500
 #define AUDIO_SPIKE volume_peaking && !volume_peaking_last
 volatile uint8_t num_peaks = 0;
 volatile uint8_t peak_samples = 0;
