@@ -262,7 +262,6 @@ void setup() {
     Serial.begin(57600);
     Serial.println(57600);
   #else
-    randomSeed(analogRead(0)); // For randomly choosing blings
   #endif
   loadConfig();
   loadBadges();
@@ -274,12 +273,13 @@ void setup() {
     if (AM_SUPERUBER) { // uber
       set_ring_lights_animation(SUPERUBER_INDEX, LOOP_FALSE, CROSSFADING, DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
     }
-    
+    // For setting my party flasher to be the same every time (but random):
+    randomSeed(config.badge_id);
     // Setup my party flasher to be a random color:
     heartbeats[SYSTEM_PARTY_INDEX][0].f_red = random(0,2) * 96;
     heartbeats[SYSTEM_PARTY_INDEX][0].f_grn = random(0,2) * 96;
     heartbeats[SYSTEM_PARTY_INDEX][0].f_blu = random(0,2) * 96;
-    if (!heartbeats[SYSTEM_PARTY_INDEX][0].f_red && !heartbeats[SYSTEM_PARTY_INDEX][0].f_grn && heartbeats[SYSTEM_PARTY_INDEX][0].f_blu) {
+    if (!heartbeats[SYSTEM_PARTY_INDEX][0].f_red && !heartbeats[SYSTEM_PARTY_INDEX][0].f_grn && !heartbeats[SYSTEM_PARTY_INDEX][0].f_blu) {
       heartbeats[SYSTEM_PARTY_INDEX][0].f_red = 96;
       heartbeats[SYSTEM_PARTY_INDEX][0].f_blu = 48;
     }
@@ -287,6 +287,8 @@ void setup() {
     heartbeats[11][0].f_red = heartbeats[SYSTEM_PARTY_INDEX][0].f_red;
     heartbeats[11][0].f_grn = heartbeats[SYSTEM_PARTY_INDEX][0].f_grn;
     heartbeats[11][0].f_blu = heartbeats[SYSTEM_PARTY_INDEX][0].f_blu;
+    
+    randomSeed(analogRead(0)); // For randomly choosing blings (actually random)
     
     
     // TODO: epilepsy warning.
@@ -516,6 +518,8 @@ void loop () {
   #if USE_LEDS
     do_led_control(elapsed_time);
   #endif
+  
+  if (in_preboot) return;
   
   //////// RADIO SECTION /////////
   // Radio duty cycle.
