@@ -14,10 +14,10 @@ def main(id, src_path):
         eeprom_contents[10+i] = 1
     """
     # Seen some badges & uber badges
-    """"""
+    """
     for i in range(0,100,2):
         eeprom_contents[10+i] = 1
-    """"""
+    """
     # Seen all uber badges
     """
     for i in range(10):
@@ -36,9 +36,9 @@ def main(id, src_path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Flash a Queercon 10 badge.")
-    parser.add_argument('id', metavar='ID', type=int, 
-                        help="The ID of the badge to flash.")
     parser.add_argument('src', metavar='PATH', type=str,
                         help="Path to the image of the program to flash.")
+    parser.add_argument('id', metavar='ID', type=int, 
+                        help="The ID of the badge to flash.")
     args = parser.parse_args()
     main(args.id, args.src)
