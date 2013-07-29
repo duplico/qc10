@@ -668,6 +668,7 @@ void loop () {
       if (lna_setting < 3) {
         rf12_control(LNA_COMMANDS[++lna_setting]);
       }
+      set_heartbeat(SYSTEM_PREBOOT_INDEX); // TODO
     }
     sent_this_cycle = false;
     if (cycle_number > R_NUM_SLEEP_CYCLES) {
