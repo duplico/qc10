@@ -1411,7 +1411,7 @@ QCRing uber8[] PROGMEM = {
 }; //uber8
 
 // REPEAT INDEFINITELY
-// EFFECT: Figure UBER_DIM
+// EFFECT: Figure 8
 #define QCR_DELAY 90
 #define UBER9LEN 14
 QCRing uber9[] PROGMEM = {
