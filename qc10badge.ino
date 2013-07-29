@@ -341,11 +341,11 @@ void show_badge_count() {
     end_index = 26;
   if (end_index < 14)
     end_index = 14;
-  if (end_index == 14) { // TODO: Test
+  if (end_index == 14) {
     led_next_ring = set_ring_lights_blink(BADGECOUNT_INDEX, LOOP_FALSE, 
                                           CROSSFADING, DEFAULT_CROSSFADE_STEP,
                                           end_index, UBERFADE_TRUE,
-                                          qcr_blinky_long, 16);
+                                          qcr_blinky_long, 8);
     return;
   }
   // TODO: test
@@ -362,7 +362,7 @@ void show_uber_count() {
     // Display "ALL" animation
     led_next_ring = set_ring_lights_blink(UBERCOUNT_INDEX, LOOP_FALSE, CROSSFADING, 
                                           DEFAULT_CROSSFADE_STEP, 17, UBERFADE_TRUE,
-                                          qcr_blinky_long, 16);
+                                          qcr_blinky_long, 8);
   }
   else { // TODO: test
     uint8_t end_index = 7 + uber_badges_seen;
@@ -574,7 +574,6 @@ void loop () {
             // Increment our beacon count in the current position in our
             // sliding window.
             neighbor_counts[window_position]+=1;
-            led_next_sys = set_system_lights_animation(10, LOOP_FALSE, 0); // TODO: don't do this.
             // See if this is a new friend by calling this non-idempotent function:
             if (save_and_check_badge(in_payload.from_id)) {
               // Set to 2 if we just saw a superuber badge, 1 otherwise:

@@ -9,7 +9,12 @@ def main(id, src_path):
     eeprom_contents[6] = id
     eeprom_contents[10] = 0
     # Seen all badges & uber badges
+    """
     for i in range(100):
+        eeprom_contents[10+i] = 1
+    """
+    # Seen some badges & uber badges
+    for i in range(0,100,2):
         eeprom_contents[10+i] = 1
     # Seen all uber badges
     """
