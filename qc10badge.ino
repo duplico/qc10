@@ -335,13 +335,13 @@ void set_gaydar_state(uint16_t cur_neighbor_count) {
 void show_badge_count() {
   if (party_mode)
     return;
-  // 13 is all. 24 is none.
+  // 14 is all? 24 is none.
   uint8_t end_index = 25 - (total_badges_seen / BADGE_METER_INTERVAL);
   if (total_badges_seen == 1)
     end_index = 26;
-  if (end_index < 13)
-    end_index = 13;
-  if (end_index == 13) { // TODO: Test
+  if (end_index < 14)
+    end_index = 14;
+  if (end_index == 14) { // TODO: Test
     led_next_ring = set_ring_lights_blink(BADGECOUNT_INDEX, LOOP_FALSE, 
                                           CROSSFADING, DEFAULT_CROSSFADE_STEP,
                                           end_index, UBERFADE_TRUE,
@@ -462,7 +462,7 @@ void do_ring_update() {
     
     led_next_ring = set_ring_lights_animation(BLING_START_INDEX + current_bling, LOOP_FALSE, 
                                               CROSSFADING, 
-                                              DEFAULT_CROSSFADE_STEP, 0, AM_SUPERUBER);
+                                              DEFAULT_CROSSFADE_STEP, 0, AM_UBER);
     time_since_last_bling = 0; // With longer times, maybe not clear this?
     idling = 0;
   }

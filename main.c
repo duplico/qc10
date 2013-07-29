@@ -266,16 +266,10 @@ uint16_t ring_lights_update_loop() {
   uint16_t required_delay_millis = 0; // How long to delay before calling me again.
   
   if (led_ring_count == 256 - FADE_SCALE || !led_ring_crossfade) {
-    required_delay_millis += current_ring.ring_delay; // hold this frame
   }
   // We split the fade into 256 steps, so what we do is setup targets,
   // then spend some iterations fading (possibly).
   if (led_ring_count == 0 || !led_ring_crossfade) {
-    if (!led_ring_blinking || led_ring_cur_frame+1 < led_ring_num_frames)
-      memcpy_P(&current_ring, &ring_animations[led_ring_animation][led_ring_cur_frame], sizeof(QCRing));
-    setupTargetRing(current_ring); // Sets up all the targets
-    // Next frame in the pattern:
-    led_ring_cur_frame++;
     // If we just finished the last one, loop.
     if (led_ring_cur_frame >= led_ring_num_frames) {
       if (led_ring_looping)
@@ -287,9 +281,16 @@ uint16_t ring_lights_update_loop() {
         led_ring_blink_count--;
       }
       else {
+        // TODO: we need to get to the target before we stop animating.
         led_ring_animating = 0;
       }
     }
+    required_delay_millis += current_ring.ring_delay; // hold this frame
+    if (!led_ring_blinking || led_ring_cur_frame+1 < led_ring_num_frames)
+      memcpy_P(&current_ring, &ring_animations[led_ring_animation][led_ring_cur_frame], sizeof(QCRing));
+    setupTargetRing(current_ring); // Sets up all the targets
+    // Next frame in the pattern:
+    led_ring_cur_frame++;
   }
   ring_fade(led_ring_crossfade);
   led_ring_count += FADE_SCALE;
@@ -419,7 +420,7 @@ ISR(ADC_vect) { // Analog->Digital Conversion Complete
         // We've detected a new beat.
         led_next_sys = set_system_lights_animation(SYSTEM_PARTY_INDEX, 
                                                    LOOP_FALSE, 0);
-      } else if (AUDIO_SPIKE && in_preboot && idling) { // Or if we're testing:
+      } else if (AUDIO_SPIKE && in_preboot) { // Or if we're testing:
           led_next_sys = set_system_lights_animation(11, LOOP_FALSE, 0);
       }
     }
