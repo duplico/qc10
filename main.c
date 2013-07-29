@@ -71,7 +71,7 @@ uint16_t led_ring_blink_count = 0;
 QCRing current_ring;
 QCRing next_ring;
 
-#define UBER_FADEOUT_INC 0.8 * FADE_SCALE
+#define UBER_FADEOUT_INC 0.08 * FADE_SCALE
 #define UBER_FADEOUT_DELAY 3
 
 void setupTargetRing(QCRing target) {
