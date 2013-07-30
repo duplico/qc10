@@ -33,7 +33,7 @@ extern "C"
 // General (overall system) configuration
 #define UBER_COUNT 10
 #define CONFIG_STRUCT_VERSION 1
-#define STARTING_ID 0
+#define STARTING_ID 1
 #define BADGES_IN_SYSTEM 105
 #define BADGE_METER_INTERVAL 6
 #define BADGE_FRIENDLY_CUTOFF 60
@@ -48,7 +48,7 @@ extern "C"
 #define R_NUM_SLEEP_CYCLES 10
 
 // LED configuration
-#define USE_LEDS 1
+#define USE_LEDS 0
 #define PREBOOT_INTERVAL 20000
 #define PREBOOT_SHOW_COUNT_AT 2000
 #define PREBOOT_SHOW_UBERCOUNT_AT 12500
@@ -304,6 +304,12 @@ void set_heartbeat(uint8_t target_sys) {
 }
 
 void set_gaydar_state(uint16_t cur_neighbor_count) {
+  #if (!USE_LEDS)
+    Serial.print("--|Update: ");
+    Serial.print(neighbor_count);
+    Serial.print(" neighbors, previously ");
+    Serial.println(last_neighbor_count);
+  #endif
   if (last_neighbor_count == 0 && cur_neighbor_count != 0 && need_to_show_new_badge == 0 && current_sys == 0) {
     need_to_show_near_badge = 1;
   }
@@ -492,7 +498,6 @@ void do_sys_update() {
 }
 
 void do_led_control(uint32_t elapsed_time) {
-  
   do_ring_update();
   do_sys_update();
   
@@ -517,9 +522,8 @@ void loop () {
   
   #if USE_LEDS
     do_led_control(elapsed_time);
+    if (in_preboot) return;
   #endif
-  
-  if (in_preboot) return;
   
   //////// RADIO SECTION /////////
   // Radio duty cycle.
@@ -655,13 +659,7 @@ void loop () {
     }
     window_position = (window_position + 1) % RECEIVE_WINDOW;
     neighbor_counts[window_position] = 0;
-#if USE_LEDS
     set_gaydar_state(neighbor_count);
-#else
-    Serial.print("--|Update: ");
-    Serial.print(neighbor_count);
-    Serial.print(" neighbors");
-#endif
     cycle_number++;
     if (!sent_this_cycle) {
       // Backoff on the LNA if we couldn't send.
