@@ -1,5 +1,4 @@
-#ifndef __MAIN_H
-#define __MAIN_H
+#pragma once
 
 #define PB0 PINB0
 #define PB1 PINB1
@@ -253,12 +252,3 @@ struct {
     uint16_t badge_id;
     uint16_t badges_in_system;
 } config;
-
-
-
-
-
-
-
-
-#endif
