@@ -8,6 +8,9 @@ Hardware
 
 Software
 ========
+
+An unholy combination of C, C++, and Arudino.
+
 * TLC5940 library: Simplified BSD License <http://opensource.org/licenses/BSD-2-Clause>
 
 ** Matthew T. Pandina <https://sites.google.com/site/artcfox/demystifying-the-tlc5940>
