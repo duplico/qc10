@@ -4,6 +4,8 @@ Hardware
 
 ** Based in part on JeeNode, (c) Jean-Claude Wippler, et al. <http://jeelabs.net/users/1>
 
+** Otherwise, (c) Evan G Mackay
+
 Software
 ========
 * TLC5940 library: Simplified BSD License <http://opensource.org/licenses/BSD-2-Clause>
