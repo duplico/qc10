@@ -48,7 +48,7 @@ extern "C"
 #define R_NUM_SLEEP_CYCLES 10
 
 // LED configuration
-#define USE_LEDS 0
+#define USE_LEDS 1
 #define PREBOOT_INTERVAL 20000
 #define PREBOOT_SHOW_COUNT_AT 2000
 #define PREBOOT_SHOW_UBERCOUNT_AT 12500

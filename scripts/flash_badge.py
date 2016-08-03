@@ -31,7 +31,10 @@ def main(id, src_path):
     # 
     with open(eeprom_path, 'w') as eeprom_file:
         eeprom_contents.write_hex_file(eeprom_file)
-    cmd_string = "avrdude -p m328p -c usbtiny -u -U hfuse:w:0xDE:m -U lfuse:w:0xBF:m -U flash:w:%s -U eeprom:w:%s" % (src_path, eeprom_path)
+    # External 16 MHz:
+    cmd_string = "avrdude -p m328p -c usbtiny -u -U hfuse:w:0xDE:m -U lfuse:w:0xBF:m -U efuse:w:0x05:m -U flash:w:%s -U eeprom:w:%s" % (src_path, eeprom_path)
+    # internal 8 MHz:
+    #cmd_string = "avrdude -p m328p -c usbtiny -u -U hfuse:w:0xDE:m -U lfuse:w:0xA2:m -U efuse:w:0x05:m -U flash:w:%s -U eeprom:w:%s" % (src_path, eeprom_path)
     os.system(cmd_string)
 
 if __name__ == "__main__":
