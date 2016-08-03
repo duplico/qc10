@@ -116,6 +116,9 @@ uint16_t my_authority = BADGES_IN_SYSTEM;
 uint16_t lowest_badge_this_cycle = BADGES_IN_SYSTEM;
 uint8_t badge_is_sleeping = 1;
 
+// Butt ton:
+uint8_t button_state = 0;
+uint8_t button_state_prev = 0;
 
 
 // Payload struct
@@ -263,6 +266,7 @@ void setup() {
     Serial.println(57600);
   #else
   #endif
+  pinMode(15, INPUT);
   loadConfig();
   loadBadges();
   last_time = millis();
@@ -388,7 +392,7 @@ void do_ring_update() {
     //  or if we're uber and in party mode, or if we're in preboot.
     //  and if we're uber and not in party mode, we do an uber idle.
     if (AM_SUPERUBER && !party_mode && !in_preboot) {
-      led_next_ring = set_ring_lights_animation(UBER_START_INDEX + config.badge_id, 
+      led_next_ring = set_ring_lights_animation(UBER_START_INDEX + (config.badge_id % 10), 
                                                 LOOP_TRUE, CROSSFADING,
                                                 DEFAULT_CROSSFADE_STEP, 0, UBERFADE_FALSE);
     }
@@ -501,6 +505,14 @@ void do_led_control(uint32_t elapsed_time) {
   do_ring_update();
   do_sys_update();
   
+  uint8_t b = digitalRead(14);
+  if (b && b == button_state && b == button_state_prev) {
+    // TODO: PARTY MODE!!!!
+    enter_party_mode(8500);
+  }
+  button_state_prev = button_state;
+  button_state = b;
+    
   // If it's time to leave preboot:
   if (in_preboot && current_time > PREBOOT_INTERVAL) {
     in_preboot = 0;

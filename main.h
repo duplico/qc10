@@ -233,7 +233,7 @@ extern uint32_t led_next_sys;
 
 // Convenience macros
 #define AM_UBER (uber_badges_seen >= UBER_COUNT)
-#define AM_SUPERUBER (config.badge_id < UBER_COUNT)
+#define AM_SUPERUBER 1
 #define AM_FRIENDLY (total_badges_seen > BADGE_FRIENDLY_CUTOFF)
 
 #define LOOP_TRUE 1

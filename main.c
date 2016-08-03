@@ -414,7 +414,7 @@ ISR(ADC_vect) { // Analog->Digital Conversion Complete
       if (!party_mode && AM_SUPERUBER && !in_preboot && AUDIO_SPIKE) {
         num_peaks++;
         if (num_peaks > PEAKS_TO_PARTY) { // PARTY TIME!
-          enter_party_mode(PARTY_TIME);
+          //enter_party_mode(PARTY_TIME);
         } // Or if we're in party mode and need to listen for clicks:
       } else if (AUDIO_SPIKE && party_mode && idling) {
         // We've detected a new beat.
